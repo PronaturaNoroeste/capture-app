@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Monitoreo Pesquero",
+    "slug": "capture-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": { "backgroundColor": "#0b5cad" },
+    "assetBundlePatterns": ["**/*"],
+    "ios": { "supportsTablet": true, "bundleIdentifier": "org.pronatura.captura" },
+    "android": {
+      "package": "org.pronatura.captura",
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
+    "plugins": ["expo-sqlite", "expo-location"],
+    "extra": { "note": "GMS-free: MapLibre/OSM + OS location; sideload/AppGallery; no FCM." }
+  }
+}
