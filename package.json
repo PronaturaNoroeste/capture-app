@@ -1,0 +1,27 @@
+{
+  "name": "capture-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pronatura Noroeste — fisheries field-capture app (Expo, offline-first, GMS-free for Huawei). Dynamic form renderer over Supabase.",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/",
+    "start": "expo start",
+    "android": "expo run:android"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "expo": "~51.0.0",
+    "expo-location": "~17.0.0",
+    "expo-sqlite": "~14.0.0",
+    "react": "18.2.0",
+    "react-native": "0.74.0",
+    "react-native-get-random-values": "~1.11.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "~18.2.0",
+    "typescript": "~5.4.0"
+  }
+}
