@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import type { Campo } from '../forms/types';
-import { OTRO } from '../forms/types';
+import { OTRO, opLabel, opValor } from '../forms/types';
 import { CatalogPicker } from './CatalogPicker';
 
 // Numeric input keeps the raw text locally so partial entries like "4." survive
@@ -62,12 +62,15 @@ function renderInput(campo: Campo, value: unknown, onChange: (v: unknown) => voi
     case 'seleccion_unica':
       return (
         <View style={s.options}>
-          {(campo.opciones ?? []).map((op) => (
-            <Pressable key={op} onPress={() => onChange(op)}
-              style={[s.option, value === op && s.optionSel]}>
-              <Text style={value === op ? s.optionSelText : undefined}>{op}</Text>
-            </Pressable>
-          ))}
+          {(campo.opciones ?? []).map((op) => {
+            const label = opLabel(op), valor = opValor(op);
+            return (
+              <Pressable key={valor} onPress={() => onChange(valor)}
+                style={[s.option, value === valor && s.optionSel]}>
+                <Text style={value === valor ? s.optionSelText : undefined}>{label}</Text>
+              </Pressable>
+            );
+          })}
         </View>
       );
     case 'booleano':

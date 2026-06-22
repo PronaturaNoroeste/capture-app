@@ -83,9 +83,17 @@ export default function App() {
     <View style={s.flex}>
       <View style={s.bar}>
         <Text style={s.barTitle}>Boca del Álamo · v{form.version}</Text>
-        <Pressable style={s.syncBtn} onPress={flush}>
-          <Text style={s.syncText}>Sincronizar ({pendientes})</Text>
-        </Pressable>
+        <View style={s.barBtns}>
+          {pendientes > 0 && (
+            <Pressable style={s.discardBtn}
+              onPress={async () => { const n = await outbox.descartarErrores(); await refreshPend(); setStatus(`Descartados: ${n}`); }}>
+              <Text style={s.syncText}>Descartar errores</Text>
+            </Pressable>
+          )}
+          <Pressable style={s.syncBtn} onPress={flush}>
+            <Text style={s.syncText}>Sincronizar ({pendientes})</Text>
+          </Pressable>
+        </View>
       </View>
       {saved ? (
         <View style={s.center}>
@@ -115,7 +123,9 @@ const s = StyleSheet.create({
   status: { color: '#666', marginTop: 12, textAlign: 'center' },
   bar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, backgroundColor: '#0b5cad' },
   barTitle: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  barBtns: { flexDirection: 'row', gap: 8 },
   syncBtn: { backgroundColor: '#ffffff22', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  discardBtn: { backgroundColor: '#ffffff22', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
   syncText: { color: '#fff', fontWeight: '600' },
   saved: { fontSize: 18, fontWeight: '700', color: '#137333' },
   again: { marginTop: 24, backgroundColor: '#1a73e8', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 14 },

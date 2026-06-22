@@ -104,14 +104,19 @@ test('engine: required + range validation', () => {
   assert.ok(keys.includes('talla_long'));       // > max 300
 });
 
-test('engine: carnada skip — "No utilicé carnada" hides + un-requires kg', () => {
+test('engine: carnada — arte_carnada visible only when origen = PESCADA (enum value)', () => {
   const carnada = definition.secciones.find((s) => s.key === 'carnada');
-  const kg = carnada.campos.find((c) => c.key === 'kg_carnada');
-  const scope = { origen: 'No utilicé carnada' };
-  assert.equal(campoVisible(kg, scope), false);
-  // hidden → no error even though it'd be required otherwise
-  const errs = validateAnswer(carnada.campos, scope);
-  assert.equal(errs.length, 0);
+  const arte = carnada.campos.find((c) => c.key === 'arte_carnada');
+  assert.equal(campoVisible(arte, { origen: 'COMPRADA' }), false);
+  assert.equal(campoVisible(arte, { origen: 'PESCADA' }), true);
+});
+
+test('option label/value mapping: origen stores enum value, shows label', async () => {
+  const { opLabel, opValor } = await import('../src/forms/types.ts');
+  const carnada = definition.secciones.find((s) => s.key === 'carnada');
+  const origen = carnada.campos.find((c) => c.key === 'origen');
+  assert.deepEqual(origen.opciones.map(opLabel), ['Comprada', 'Pescada']);
+  assert.deepEqual(origen.opciones.map(opValor), ['COMPRADA', 'PESCADA']);  // enum values
 });
 
 test('section visibility: tallas hidden unless gate = Sí', () => {

@@ -23,6 +23,7 @@ export interface OutboxStore {
   upsert(e: OutboxEntry): Promise<void>;
   get(faenaId: string): Promise<OutboxEntry | undefined>;
   list(states?: OutboxState[]): Promise<OutboxEntry[]>;
+  remove(faenaId: string): Promise<void>;
 }
 
 // Calls the RPC; resolves on success, throws on failure (network or server).
@@ -52,6 +53,13 @@ export class Outbox {
 
   async pendientes(): Promise<OutboxEntry[]> {
     return this.store.list(['pendiente', 'error']);
+  }
+
+  // Discard entries stuck in 'error' (e.g. a bad payload during dev). Returns count.
+  async descartarErrores(): Promise<number> {
+    const errored = await this.store.list(['error']);
+    for (const e of errored) await this.store.remove(e.faenaId);
+    return errored.length;
   }
 
   // Try to flush all pending/errored entries. Returns counts. Never throws —
@@ -88,4 +96,5 @@ export class MemoryOutboxStore implements OutboxStore {
     const all = [...this.m.values()];
     return states ? all.filter((e) => states.includes(e.state)) : all;
   }
+  async remove(faenaId: string) { this.m.delete(faenaId); }
 }

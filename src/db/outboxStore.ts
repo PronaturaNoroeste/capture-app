@@ -34,6 +34,11 @@ export class SqliteOutboxStore implements OutboxStore {
     return r ? rowToEntry(r) : undefined;
   }
 
+  async remove(faenaId: string): Promise<void> {
+    const db = await getDb();
+    await db.runAsync('DELETE FROM outbox WHERE faena_id = ?', [faenaId]);
+  }
+
   async list(states?: OutboxState[]): Promise<OutboxEntry[]> {
     const db = await getDb();
     let rows: any[];

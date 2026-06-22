@@ -21,6 +21,13 @@ export interface Binding {
   clave?: string;            // custom (EAV) key
 }
 
+// An option is either a plain string (label == stored value) or a {label, valor}
+// pair when the displayed text differs from what's stored (e.g. enum columns:
+// show "Comprada", store "COMPRADA").
+export type Opcion = string | { label: string; valor: string };
+export const opLabel = (o: Opcion): string => (typeof o === 'string' ? o : o.label);
+export const opValor = (o: Opcion): string => (typeof o === 'string' ? o : o.valor);
+
 export interface Campo {
   key: string;
   label: string;
@@ -32,7 +39,7 @@ export interface Campo {
   requerido_si?: Condicion;
   validacion?: { min?: number; max?: number; regex?: string };
   visible_si?: Condicion;
-  opciones?: string[];
+  opciones?: Opcion[];
   opciones_prioritarias?: string[];
   autocompletar?: boolean;
   filtrado_por?: { campo: string; modo: 'filtrar' | 'priorizar' };
