@@ -45,9 +45,6 @@ export function CatalogPicker({ campo, value, onChange }: Props) {
             <Text style={s.title}>{campo.label}</Text>
             <Pressable onPress={() => setOpen(false)}><Text style={s.close}>Cerrar</Text></Pressable>
           </View>
-          <Text style={s.debug}>
-            {tabla} · {items.length} en caché · {results.length} mostrados
-          </Text>
           <TextInput
             style={s.search} placeholder="Escribe para buscar…" value={q}
             onChangeText={setQ} autoCorrect={false} autoFocus
@@ -103,6 +100,5 @@ const s = StyleSheet.create({
   rowText: { fontSize: 16 },
   badge: { fontSize: 11, color: '#b8860b', backgroundColor: '#fff7e0', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
   otro: { backgroundColor: '#fafafa' }, otroText: { color: '#1a73e8', fontSize: 16 },
-  debug: { color: '#999', fontSize: 12, paddingHorizontal: 16, paddingBottom: 6 },
   empty: { color: '#888', textAlign: 'center', padding: 24 },
 });
