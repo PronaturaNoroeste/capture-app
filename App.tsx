@@ -1,8 +1,7 @@
 // Root: init Supabase, sync catalogs + cache the pilot form (online once), then render
 // the form fully offline. On save → enqueue to the SQLite outbox. A sync bar flushes.
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, Pressable, ActivityIndicator, StatusBar, Platform, StyleSheet } from 'react-native';
 import { initSupabase, supabase, syncFaena } from './src/sync/supabaseClient';
 import { Outbox } from './src/sync/outbox';
 import { SqliteOutboxStore } from './src/db/outboxStore';
@@ -61,18 +60,15 @@ export default function App() {
 
   if (!form) {
     return (
-      <SafeAreaProvider>
-        <SafeAreaView style={s.center}>
-          <ActivityIndicator size="large" />
-          <Text style={s.status}>{status}</Text>
-        </SafeAreaView>
-      </SafeAreaProvider>
+      <View style={[s.flex, s.center]}>
+        <ActivityIndicator size="large" />
+        <Text style={s.status}>{status}</Text>
+      </View>
     );
   }
 
   return (
-    <SafeAreaProvider>
-    <SafeAreaView style={s.flex} edges={['top']}>
+    <View style={s.flex}>
       <View style={s.bar}>
         <Text style={s.barTitle}>Boca del Álamo · v{form.version}</Text>
         <Pressable style={s.syncBtn} onPress={flush}>
@@ -95,13 +91,14 @@ export default function App() {
           onComplete={onComplete}
         />
       )}
-    </SafeAreaView>
-    </SafeAreaProvider>
+    </View>
   );
 }
 
+const TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 44;
+
 const s = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#f6f7f9' },
+  flex: { flex: 1, backgroundColor: '#f6f7f9', paddingTop: TOP },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   status: { color: '#666', marginTop: 12, textAlign: 'center' },
   bar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, backgroundColor: '#0b5cad' },
