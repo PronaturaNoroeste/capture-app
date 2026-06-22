@@ -29,15 +29,20 @@ export default function App() {
     if (error) throw new Error('formato: ' + error.message);
     const formatoId = fmt.id as string;
 
-    let cached = await getCachedForm(formatoId);
-    if (!cached) {
-      setStatus('Descargando catálogos…');
-      await syncCatalogs(supabase(), CATALOGOS_PILOTO);
-      setStatus('Descargando formulario…');
+    // Refresh catalogs + form whenever we can reach the server; fall back to the
+    // local cache when offline. (Avoids stale-cache traps and picks up new approvals.)
+    try {
+      setStatus('Actualizando catálogos…');
+      const n = await syncCatalogs(supabase(), CATALOGOS_PILOTO);
+      setStatus('Actualizando formulario…');
       await cacheForm(supabase(), formatoId);
-      cached = await getCachedForm(formatoId);
+      console.log(`catalogos sincronizados: ${n} filas`);
+    } catch (e) {
+      console.log('sin conexión, usando caché local:', String(e));
     }
-    if (!cached) throw new Error('No hay formulario publicado para ' + FORMATO_PILOTO);
+
+    const cached = await getCachedForm(formatoId);
+    if (!cached) throw new Error('No hay formulario en caché. Conéctate a internet y reinicia.');
     setForm(cached);
     await refreshPend();
     setStatus('Listo');
