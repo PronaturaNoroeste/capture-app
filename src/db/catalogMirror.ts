@@ -7,6 +7,13 @@ import { getDb } from './database';
 // catalog table → name column (most use 'nombre'; especie differs)
 const NAME_COL: Record<string, string> = { cat_especie: 'nombre_comun' };
 
+// Controlled-vocabulary catalogs WITHOUT es_aprobado/estado — every row is canonical,
+// so pull all of them with no approval filter (see migration 0003).
+const SIN_APROBACION = new Set([
+  'cat_tipo_gasto', 'cat_tipo_interaccion_etp',
+  'cat_tipo_viento', 'cat_tipo_luna', 'cat_tipo_marea', 'cat_region', 'cat_formato_origen',
+]);
+
 // Pull approved rows for the given catalog tables and upsert into the local mirror.
 // (Delta refresh by updated_at can be layered on later; full pull is fine at this size.)
 export async function syncCatalogs(sb: SupabaseClient, tablas: string[]): Promise<number> {
@@ -14,10 +21,11 @@ export async function syncCatalogs(sb: SupabaseClient, tablas: string[]): Promis
   let total = 0;
   for (const tabla of tablas) {
     const nameCol = NAME_COL[tabla] ?? 'nombre';
-    const { data, error } = await sb
-      .from(tabla)
-      .select(`id, ${nameCol}, estado`)
-      .eq('es_aprobado', true);
+    const controlled = SIN_APROBACION.has(tabla);
+    const cols = controlled ? `id, ${nameCol}` : `id, ${nameCol}, estado`;
+    let query = sb.from(tabla).select(cols);
+    if (!controlled) query = query.eq('es_aprobado', true);
+    const { data, error } = await query;
     if (error) throw new Error(`${tabla}: ${error.message}`);
     await db.withTransactionAsync(async () => {
       for (const row of data ?? []) {
