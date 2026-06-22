@@ -60,7 +60,14 @@ export default function App() {
     setStatus('Sincronizando…');
     const r = await outbox.flush(syncFaena);
     await refreshPend();
-    setStatus(`Sync: ${r.ok} ok, ${r.fail} pendiente(s)`);
+    if (r.fail > 0) {
+      const failed = (await outbox.pendientes()).find((e) => e.ultimoError);
+      const msg = failed?.ultimoError ?? 'desconocido';
+      console.log('SYNC ERROR:', msg);
+      setStatus(`Error: ${msg}`);
+    } else {
+      setStatus(`Sync: ${r.ok} ok`);
+    }
   }
 
   if (!form) {

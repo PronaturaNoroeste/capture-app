@@ -1,9 +1,33 @@
 // Renders one field by type. Pure presentational — state lives in FormRenderer.
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import type { Campo } from '../forms/types';
 import { OTRO } from '../forms/types';
 import { CatalogPicker } from './CatalogPicker';
+
+// Numeric input keeps the raw text locally so partial entries like "4." survive
+// (parsing to Number on every keystroke would strip the trailing dot). Emits a
+// number (or undefined) upward; allows one decimal separator.
+function NumericInput({ value, ejemplo, onChange }:
+  { value: unknown; ejemplo?: string; onChange: (v: unknown) => void }) {
+  const [text, setText] = useState(value == null ? '' : String(value));
+  useEffect(() => { if (value == null) setText(''); }, [value]);   // reset on new faena
+  return (
+    <TextInput
+      style={s.input} keyboardType="decimal-pad" placeholder={ejemplo}
+      value={text}
+      onChangeText={(t) => {
+        let c = t.replace(',', '.').replace(/[^0-9.]/g, '');       // digits + one dot
+        const i = c.indexOf('.');
+        if (i >= 0) c = c.slice(0, i + 1) + c.slice(i + 1).replace(/\./g, '');
+        setText(c);
+        if (c === '' || c === '.') { onChange(undefined); return; }
+        const n = Number(c);
+        onChange(Number.isNaN(n) ? undefined : n);
+      }}
+    />
+  );
+}
 
 interface Props {
   campo: Campo;
@@ -29,11 +53,7 @@ function renderInput(campo: Campo, value: unknown, onChange: (v: unknown) => voi
   switch (campo.tipo) {
     case 'entero':
     case 'decimal':
-      return (
-        <TextInput style={s.input} keyboardType="numeric"
-          value={value == null ? '' : String(value)} placeholder={campo.ejemplo}
-          onChangeText={(t) => onChange(t === '' ? undefined : Number(t.replace(',', '.')))} />
-      );
+      return <NumericInput value={value} ejemplo={campo.ejemplo} onChange={onChange} />;
     case 'fecha':
       return (
         <TextInput style={s.input} placeholder="AAAA-MM-DD"
