@@ -13,7 +13,6 @@
       "package": "org.pronatura.captura",
       "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
     },
-    "plugins": ["expo-sqlite", "expo-location"],
-    "extra": { "note": "GMS-free: MapLibre/OSM + OS location; sideload/AppGallery; no FCM." }
+    "extra": { "note": "GMS-free: MapLibre/OSM + OS location; sideload/AppGallery; no FCM. expo-sqlite/expo-location autolink — no config plugin needed for M1." }
   }
 }
