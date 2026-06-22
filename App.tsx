@@ -1,7 +1,8 @@
 // Root: init Supabase, sync catalogs + cache the pilot form (online once), then render
 // the form fully offline. On save → enqueue to the SQLite outbox. A sync bar flushes.
 import React, { useEffect, useState } from 'react';
-import { SafeAreaView, View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { initSupabase, supabase, syncFaena } from './src/sync/supabaseClient';
 import { Outbox } from './src/sync/outbox';
 import { SqliteOutboxStore } from './src/db/outboxStore';
@@ -60,15 +61,18 @@ export default function App() {
 
   if (!form) {
     return (
-      <SafeAreaView style={s.center}>
-        <ActivityIndicator size="large" />
-        <Text style={s.status}>{status}</Text>
-      </SafeAreaView>
+      <SafeAreaProvider>
+        <SafeAreaView style={s.center}>
+          <ActivityIndicator size="large" />
+          <Text style={s.status}>{status}</Text>
+        </SafeAreaView>
+      </SafeAreaProvider>
     );
   }
 
   return (
-    <SafeAreaView style={s.flex}>
+    <SafeAreaProvider>
+    <SafeAreaView style={s.flex} edges={['top']}>
       <View style={s.bar}>
         <Text style={s.barTitle}>Boca del Álamo · v{form.version}</Text>
         <Pressable style={s.syncBtn} onPress={flush}>
@@ -92,6 +96,7 @@ export default function App() {
         />
       )}
     </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
