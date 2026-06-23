@@ -44,6 +44,13 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
       definicion        TEXT NOT NULL,
       constantes        TEXT
     );
+
+    -- generic key/value store; backs the Supabase Auth session (persists the
+    -- anonymous identity across launches so auth.uid() stays stable per install).
+    CREATE TABLE IF NOT EXISTS kv (
+      k TEXT PRIMARY KEY,
+      v TEXT
+    );
   `);
   return _db;
 }

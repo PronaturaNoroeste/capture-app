@@ -2,7 +2,7 @@
 // the form fully offline. On save → enqueue to the SQLite outbox. A sync bar flushes.
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, StatusBar, Platform, StyleSheet } from 'react-native';
-import { initSupabase, supabase, syncFaena } from './src/sync/supabaseClient';
+import { initSupabase, supabase, syncFaena, ensureAnonAuth } from './src/sync/supabaseClient';
 import { Outbox } from './src/sync/outbox';
 import { SqliteOutboxStore } from './src/db/outboxStore';
 import { syncCatalogs, cacheForm, getCachedForm, type CachedForm } from './src/db/catalogMirror';
@@ -23,6 +23,17 @@ export default function App() {
   // First launch (online): pull catalogs + form, cache them. Later launches: use cache.
   async function bootstrap() {
     initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Authenticated (anonymous) session first — RLS requires it for reads + sync.
+    // Reuses the persisted session offline; only signs in online on first launch.
+    try {
+      setStatus('Autenticando…');
+      const uid = await ensureAnonAuth();
+      console.log('sesión anónima:', uid);
+    } catch (e) {
+      console.log('sin sesión (offline en primer arranque?):', String(e));
+    }
+
     // resolve formato codigo → id
     const { data: fmt, error } = await supabase()
       .from('cat_formato_origen').select('id').eq('codigo', FORMATO_PILOTO).single();
