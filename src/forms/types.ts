@@ -44,6 +44,7 @@ export interface Campo {
   autocompletar?: boolean;
   filtrado_por?: { campo: string; modo: 'filtrar' | 'priorizar' };
   permite_otro_texto?: boolean;
+  permite_proponer?: boolean;   // catalogo field: offer "proponer nueva entrada" (gated server-side)
   valor_predeterminado?: unknown;
   bloqueado?: boolean;
   // unit transform (e.g. captured kg, stored gr)

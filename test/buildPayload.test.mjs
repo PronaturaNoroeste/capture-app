@@ -124,3 +124,26 @@ test('section visibility: tallas hidden unless gate = Sí', () => {
   assert.equal(seccionVisible(tallas, { monitorear_tallas: 'No' }), false);
   assert.equal(seccionVisible(tallas, { monitorear_tallas: 'Sí' }), true);
 });
+
+test('propuestas: only proposals referenced by the payload are included', () => {
+  counter = 0;
+  // capitan = a proposed new pescador id; an unused proposal must be dropped
+  const answers = { generales: { capitan: 'PROP-CAP', especie_objetivo: 'E-HUACH' } };
+  const p = buildPayload(base({
+    answers,
+    propuestas: [
+      { tabla: 'cat_pescador', id: 'PROP-CAP', nombre: 'Nuevo Capitán' },
+      { tabla: 'cat_embarcacion', id: 'PROP-EMB-UNUSED', nombre: 'Lancha fantasma' },
+    ],
+  }));
+  assert.equal(p.faena.capitan_id, 'PROP-CAP');
+  assert.ok(Array.isArray(p.propuestas));
+  assert.equal(p.propuestas.length, 1);                     // unused one dropped
+  assert.deepEqual(p.propuestas[0], { tabla: 'cat_pescador', id: 'PROP-CAP', nombre: 'Nuevo Capitán' });
+});
+
+test('propuestas: absent when none provided', () => {
+  counter = 0;
+  const p = buildPayload(base({ answers: { generales: { especie_objetivo: 'E-HUACH' } } }));
+  assert.ok(!('propuestas' in p));
+});

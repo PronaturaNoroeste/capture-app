@@ -4,10 +4,13 @@
 // Supports the "Otro → free text" sentinel (permite_otro_texto).
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, FlatList, Modal, StyleSheet } from 'react-native';
+import 'react-native-get-random-values';
+import { v4 as uuidv4 } from 'uuid';
 import type { Campo } from '../forms/types';
 import { OTRO } from '../forms/types';
-import { rankCatalog, type CatalogItem } from '../catalog/search';
-import { getCatalogItems } from '../db/catalogMirror';
+import { rankCatalog, norm, type CatalogItem } from '../catalog/search';
+import { getCatalogItems, addLocalProposal } from '../db/catalogMirror';
+import { recordProposal } from '../forms/proposals';
 
 interface Props {
   campo: Campo;
@@ -30,6 +33,19 @@ export function CatalogPicker({ campo, value, onChange }: Props) {
 
   const selected = value === OTRO ? 'Otro (especificado)' : items.find((i) => i.id === value)?.nombre;
   const pick = (id: string | undefined) => { onChange(id); setOpen(false); setQ(''); };
+
+  // Propose a new catalog entry (offline): add it to the local mirror so it's
+  // reusable immediately, buffer it for the sync payload, and select it.
+  const qTrim = q.trim();
+  const exactMatch = results.some((i) => norm(i.nombre) === norm(qTrim));
+  const canPropose = !!campo.permite_proponer && qTrim.length >= 2 && !exactMatch;
+  const propose = async () => {
+    const id = uuidv4();
+    recordProposal({ tabla, id, nombre: qTrim });
+    await addLocalProposal(tabla, id, qTrim);
+    setItems((prev) => [...prev, { id, nombre: qTrim, estado: 'pendiente' }]);
+    pick(id);
+  };
 
   return (
     <>
@@ -61,11 +77,21 @@ export function CatalogPicker({ campo, value, onChange }: Props) {
           <FlatList
             data={results} keyExtractor={(i) => i.id} style={s.list}
             keyboardShouldPersistTaps="handled"
-            ListHeaderComponent={campo.permite_otro_texto ? (
-              <Pressable style={[s.row, s.otro]} onPress={() => pick(OTRO)}>
-                <Text style={s.otroText}>+ Otro (especificar)</Text>
-              </Pressable>
-            ) : null}
+            ListHeaderComponent={
+              <>
+                {canPropose ? (
+                  <Pressable style={[s.row, s.propose]} onPress={propose}>
+                    <Text style={s.proposeText}>+ Proponer «{qTrim}»</Text>
+                    <Text style={s.proposeHint}>se revisará después</Text>
+                  </Pressable>
+                ) : null}
+                {campo.permite_otro_texto ? (
+                  <Pressable style={[s.row, s.otro]} onPress={() => pick(OTRO)}>
+                    <Text style={s.otroText}>+ Otro (especificar)</Text>
+                  </Pressable>
+                ) : null}
+              </>
+            }
             ListEmptyComponent={
               <Text style={s.empty}>
                 {items.length === 0
@@ -100,5 +126,8 @@ const s = StyleSheet.create({
   rowText: { fontSize: 16 },
   badge: { fontSize: 11, color: '#b8860b', backgroundColor: '#fff7e0', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
   otro: { backgroundColor: '#fafafa' }, otroText: { color: '#1a73e8', fontSize: 16 },
+  propose: { backgroundColor: '#fff7e0' },
+  proposeText: { color: '#b8860b', fontSize: 16, fontWeight: '600' },
+  proposeHint: { color: '#b8860b', fontSize: 12 },
   empty: { color: '#888', textAlign: 'center', padding: 24 },
 });

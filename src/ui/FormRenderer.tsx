@@ -1,7 +1,7 @@
 // Dynamic form renderer: walks the form-definition, manages answers, applies
 // visible_si / validation via the pure engine, supports repeating groups + the
 // "Otro → free text" sentinel. On submit → buildPayload → onComplete(payload).
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
@@ -9,6 +9,7 @@ import type { Answers, Campo, FormDefinition, Seccion } from '../forms/types';
 import { OTRO } from '../forms/types';
 import { campoVisible, seccionVisible, validateAnswer } from '../forms/engine';
 import { buildPayload } from '../forms/buildPayload';
+import { clearProposals, takeProposals } from '../forms/proposals';
 import { Field } from './Field';
 
 interface Props {
@@ -34,6 +35,9 @@ export function FormRenderer(p: Props) {
     return init;
   });
   const [showErrors, setShowErrors] = useState(false);
+
+  // Fresh faena → discard any proposals buffered from a previous capture.
+  useEffect(() => { clearProposals(); }, []);
 
   const setField = (k: string, v: unknown) => setScope((s) => ({ ...s, [k]: v }));
   const setRepeatField = (sec: string, i: number, k: string, v: unknown) =>
@@ -73,6 +77,7 @@ export function FormRenderer(p: Props) {
       faenaId, formularioId: p.formularioId, formularioVersion: p.formularioVersion,
       formatoOrigenId: p.formatoOrigenId, definition: p.definition, constantes: p.constantes,
       answers, newId: () => uuidv4(), deviceId: p.deviceId, createdBy: p.createdBy,
+      propuestas: takeProposals(),
     });
     p.onComplete(faenaId, payload);
   }

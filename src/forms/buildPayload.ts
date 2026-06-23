@@ -12,6 +12,7 @@
 // Pure function: deterministic, no I/O. Unit-tested in test/buildPayload.test.mjs.
 
 import type { Answers, Campo, FormDefinition, Seccion } from './types';
+import type { Proposal } from './proposals';
 
 export interface BuildInput {
   faenaId: string;                       // client-generated UUID
@@ -24,6 +25,14 @@ export interface BuildInput {
   newId: () => string;                   // UUID generator for child rows
   deviceId?: string;
   createdBy?: string;
+  propuestas?: Proposal[];               // catalog proposals made during capture
+}
+
+// Walk an arbitrary payload value collecting every string (to find referenced ids).
+function collectStrings(o: unknown, into: Set<string>): void {
+  if (typeof o === 'string') into.add(o);
+  else if (Array.isArray(o)) for (const x of o) collectStrings(x, into);
+  else if (o && typeof o === 'object') for (const x of Object.values(o)) collectStrings(x, into);
 }
 
 // table name → payload array key
@@ -141,5 +150,16 @@ export function buildPayload(input: BuildInput): Record<string, unknown> {
   }
 
   if (customs.length) payload['valores_custom'] = customs;
+
+  // Catalog proposals: include only those actually referenced by the payload
+  // (a técnico may propose then remove the row). The RPC inserts them first.
+  if (input.propuestas?.length) {
+    const refs = new Set<string>();
+    collectStrings(payload, refs);
+    const used = input.propuestas
+      .filter((p) => refs.has(p.id))
+      .map((p) => ({ tabla: p.tabla, id: p.id, nombre: p.nombre }));
+    if (used.length) payload['propuestas'] = used;
+  }
   return payload;
 }
