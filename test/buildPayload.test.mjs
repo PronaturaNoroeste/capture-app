@@ -147,3 +147,17 @@ test('propuestas: absent when none provided', () => {
   const p = buildPayload(base({ answers: { generales: { especie_objetivo: 'E-HUACH' } } }));
   assert.ok(!('propuestas' in p));
 });
+
+test('requerido_si: conditionally required only when its condition holds (by-gear)', () => {
+  const campo = {
+    key: 'metodo', label: 'Método', tipo: 'texto',
+    binding: { tipo: 'core', columna: 'faena_arte.metodo' },
+    requerido_si: { campo: 'tipo_arte', op: '==', valor: 'PIOLA' },
+  };
+  // condition holds + empty → required error
+  assert.ok(validateAnswer([campo], { tipo_arte: 'PIOLA' }).some((e) => e.campo === 'metodo'));
+  // condition false → not required
+  assert.equal(validateAnswer([campo], { tipo_arte: 'CHINCHORRO' }).length, 0);
+  // condition holds + filled → no error
+  assert.equal(validateAnswer([campo], { tipo_arte: 'PIOLA', metodo: 'Línea' }).length, 0);
+});
