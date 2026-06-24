@@ -2,6 +2,7 @@
 // serve offline autocomplete. Also caches the published form-definition.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CatalogItem } from '../catalog/search';
+import { reconcileAction } from '../catalog/reconcile';
 import { getDb } from './database';
 
 // catalog table → name column (most use 'nombre'; especie differs)
@@ -55,6 +56,38 @@ export async function addLocalProposal(tabla: string, id: string, nombre: string
     `INSERT INTO catalogo (tabla, id, nombre, estado) VALUES (?, ?, ?, 'pendiente')
      ON CONFLICT(tabla, id) DO NOTHING`,
     [tabla, id, nombre]);
+}
+
+// Reconcile this device's pending proposals with their server outcome: approved
+// ones become selectable-as-approved; rejected/merged/deleted ones are dropped so
+// the técnico stops seeing a stale option. Runs on the online catalog refresh.
+export async function reconcileProposals(sb: SupabaseClient): Promise<{ resueltas: number }> {
+  const db = await getDb();
+  const pend = await db.getAllAsync<{ tabla: string; id: string }>(
+    "SELECT tabla, id FROM catalogo WHERE estado = 'pendiente'");
+  const byTable = new Map<string, string[]>();
+  for (const r of pend) (byTable.get(r.tabla) ?? byTable.set(r.tabla, []).get(r.tabla)!).push(r.id);
+
+  let resueltas = 0;
+  for (const [tabla, ids] of byTable) {
+    const { data, error } = await sb.from(tabla).select('id, estado').in('id', ids);
+    if (error) continue;   // offline/permission hiccup → leave pending, retry next refresh
+    const serverState = new Map((data ?? []).map((d: any) => [d.id, d.estado as string]));
+    await db.withTransactionAsync(async () => {
+      for (const id of ids) {
+        const action = reconcileAction(serverState.get(id));
+        if (action === 'delete') {
+          await db.runAsync('DELETE FROM catalogo WHERE tabla = ? AND id = ?', [tabla, id]);
+          resueltas++;
+        } else if (action === 'approve') {
+          await db.runAsync("UPDATE catalogo SET estado = 'aprobado' WHERE tabla = ? AND id = ?",
+            [tabla, id]);
+          resueltas++;
+        }
+      }
+    });
+  }
+  return { resueltas };
 }
 
 // ---- form-definition cache ----
