@@ -15,8 +15,12 @@ const SIN_APROBACION = new Set([
   'cat_tipo_viento', 'cat_tipo_luna', 'cat_tipo_marea', 'cat_region', 'cat_formato_origen',
 ]);
 
-// Pull approved rows for the given catalog tables and upsert into the local mirror.
-// (Delta refresh by updated_at can be layered on later; full pull is fine at this size.)
+const PAGE = 1000;   // PostgREST caps a response (~1000 rows); page through it.
+
+// Pull approved rows for the given catalog tables and make the local mirror a true
+// replica of them: upsert what the server has, and PRUNE local rows the server no
+// longer has (e.g. an entry merged/deleted by an admin) — but never the device's own
+// 'pendiente' proposals, which reconcileProposals() resolves separately.
 export async function syncCatalogs(sb: SupabaseClient, tablas: string[]): Promise<number> {
   const db = await getDb();
   let total = 0;
@@ -24,18 +28,36 @@ export async function syncCatalogs(sb: SupabaseClient, tablas: string[]): Promis
     const nameCol = NAME_COL[tabla] ?? 'nombre';
     const controlled = SIN_APROBACION.has(tabla);
     const cols = controlled ? `id, ${nameCol}` : `id, ${nameCol}, estado`;
-    let query = sb.from(tabla).select(cols);
-    if (!controlled) query = query.eq('es_aprobado', true);
-    const { data, error } = await query;
-    if (error) throw new Error(`${tabla}: ${error.message}`);
+
+    // Page through the full approved set first (so a partial pull can't drive a prune).
+    const rows: any[] = [];
+    for (let from = 0; ; from += PAGE) {
+      let query = sb.from(tabla).select(cols).range(from, from + PAGE - 1);
+      if (!controlled) query = query.eq('es_aprobado', true);
+      const { data, error } = await query;
+      if (error) throw new Error(`${tabla}: ${error.message}`);
+      const batch = data ?? [];
+      rows.push(...batch);
+      if (batch.length < PAGE) break;
+    }
+
+    const pulled = new Set(rows.map((r) => r.id as string));
+    // Local approved rows the server no longer returns → stale (merged/deleted).
+    const localApproved = await db.getAllAsync<{ id: string }>(
+      "SELECT id FROM catalogo WHERE tabla = ? AND estado <> 'pendiente'", [tabla]);
+    const stale = localApproved.filter((r) => !pulled.has(r.id)).map((r) => r.id);
+
     await db.withTransactionAsync(async () => {
-      for (const row of data ?? []) {
+      for (const row of rows) {
         await db.runAsync(
           `INSERT INTO catalogo (tabla, id, nombre, estado) VALUES (?, ?, ?, ?)
            ON CONFLICT(tabla, id) DO UPDATE SET nombre=excluded.nombre, estado=excluded.estado`,
-          [tabla, (row as any).id, (row as any)[nameCol], (row as any).estado ?? 'aprobado'],
+          [tabla, row.id, row[nameCol], row.estado ?? 'aprobado'],
         );
         total++;
+      }
+      for (const id of stale) {
+        await db.runAsync('DELETE FROM catalogo WHERE tabla = ? AND id = ?', [tabla, id]);
       }
     });
   }
