@@ -6,13 +6,28 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "splash": { "backgroundColor": "#0b5cad" },
-    "assetBundlePatterns": ["**/*"],
-    "ios": { "supportsTablet": true, "bundleIdentifier": "org.pronatura.captura" },
+    "splash": {
+      "backgroundColor": "#0b5cad"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.pronatura.captura"
+    },
     "android": {
       "package": "org.pronatura.captura",
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
-    "extra": { "note": "GMS-free: MapLibre/OSM + OS location; sideload/AppGallery; no FCM. expo-sqlite/expo-location autolink — no config plugin needed for M1." }
+    "extra": {
+      "note": "GMS-free: MapLibre/OSM + OS location; sideload/AppGallery; no FCM. expo-sqlite/expo-location autolink — no config plugin needed for M1."
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
   }
 }

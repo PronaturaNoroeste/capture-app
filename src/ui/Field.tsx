@@ -1,9 +1,41 @@
 // Renders one field by type. Pure presentational — state lives in FormRenderer.
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import type { Campo } from '../forms/types';
 import { OTRO, opLabel, opValor } from '../forms/types';
 import { CatalogPicker } from './CatalogPicker';
+
+// Date field: tap to open the OS calendar dialog (GMS-free). Stores the value as a
+// local 'YYYY-MM-DD' string — same format the rest of the pipeline already expects.
+function DateField({ value, onChange }: { value: unknown; onChange: (v: unknown) => void }) {
+  const [show, setShow] = useState(false);
+  const hasValue = typeof value === 'string' && value !== '';
+  // parse as local midnight (no 'Z') so the day never shifts by timezone
+  const current = hasValue ? new Date(value + 'T00:00:00') : new Date();
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return (
+    <>
+      <Pressable style={s.input} onPress={() => setShow(true)}>
+        <Text style={hasValue ? undefined : s.placeholder}>
+          {hasValue ? (value as string) : 'Seleccionar fecha…'}
+        </Text>
+      </Pressable>
+      {show && (
+        <DateTimePicker
+          value={current}
+          mode="date"
+          maximumDate={new Date()}
+          onChange={(event, d) => {
+            setShow(false);                                   // Android dialog is one-shot
+            if (event.type === 'set' && d) onChange(fmt(d));
+          }}
+        />
+      )}
+    </>
+  );
+}
 
 // Numeric input keeps the raw text locally so partial entries like "4." survive
 // (parsing to Number on every keystroke would strip the trailing dot). Emits a
@@ -55,10 +87,7 @@ function renderInput(campo: Campo, value: unknown, onChange: (v: unknown) => voi
     case 'decimal':
       return <NumericInput value={value} ejemplo={campo.ejemplo} onChange={onChange} />;
     case 'fecha':
-      return (
-        <TextInput style={s.input} placeholder="AAAA-MM-DD"
-          value={value == null ? '' : String(value)} onChangeText={(t) => onChange(t || undefined)} />
-      );
+      return <DateField value={value} onChange={onChange} />;
     case 'seleccion_unica':
       return (
         <View style={s.options}>
@@ -101,6 +130,7 @@ const s = StyleSheet.create({
   label: { fontWeight: '600', marginBottom: 4 },
   help: { color: '#666', fontSize: 13, marginBottom: 6 },
   input: { borderWidth: 1, borderColor: '#bbb', borderRadius: 8, padding: 12, backgroundColor: '#fff' },
+  placeholder: { color: '#999' },
   options: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   option: { borderWidth: 1, borderColor: '#bbb', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#fff' },
   optionSel: { backgroundColor: '#1a73e8', borderColor: '#1a73e8' },
