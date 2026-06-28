@@ -20,14 +20,17 @@ interface Props {
   formatoOrigenId: string;
   deviceId: string;
   createdBy: string;
+  prefill?: Record<string, unknown>;   // field key → value (e.g. tecnico_id from the logged-in user)
+  hiddenKeys?: string[];               // field keys to not render (prefilled from the account)
   onComplete: (faenaId: string, payload: Record<string, unknown>) => void;
 }
 
 type Inst = Record<string, unknown>;
 
 export function FormRenderer(p: Props) {
-  // non-repeating sections share one flat scope (faena-level answers, keyed by field.key)
-  const [scope, setScope] = useState<Inst>({});
+  // non-repeating sections share one flat scope (faena-level answers, keyed by field.key).
+  // Seed it with account-derived prefill (e.g. the técnico's own cat_tecnico id).
+  const [scope, setScope] = useState<Inst>(() => ({ ...(p.prefill ?? {}) }));
   // repeating sections: key → array of instances
   const [repeats, setRepeats] = useState<Record<string, Inst[]>>(() => {
     const init: Record<string, Inst[]> = {};
@@ -49,7 +52,7 @@ export function FormRenderer(p: Props) {
     showErrors ? Object.fromEntries(validateAnswer(campos, inst).map((e) => [e.campo, e.mensaje])) : {};
 
   function visibleCampos(campos: Campo[], inst: Inst): Campo[] {
-    return campos.filter((c) => campoVisible(c, inst));
+    return campos.filter((c) => !p.hiddenKeys?.includes(c.key) && campoVisible(c, inst));
   }
 
   const answers: Answers = useMemo(() => {

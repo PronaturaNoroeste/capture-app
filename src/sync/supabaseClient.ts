@@ -1,20 +1,29 @@
-// Supabase client + the one server call the app makes for sync.
+// Supabase client + auth + the one server call the app makes for sync.
 // GMS-free: nothing here depends on Google Play Services.
 //
-// Auth (M2): the app signs in *anonymously*. Each install thus gets a stable
-// `authenticated` JWT with its own auth.uid(), persisted in the local SQLite kv
-// store. The sync RPC stamps that uid onto every faena for claim-later
-// reconciliation, and RLS now requires an authenticated session.
+// Auth (Phase 1, AppDashboardSpec/15): real email+password accounts (admin-created).
+// The session persists in the local SQLite kv store and works offline once cached.
+// The sync RPC stamps auth.uid() onto every faena (= the registrant = usuario.id).
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { SqliteAuthStorage } from '../db/kvStorage';
 
 let _client: SupabaseClient | null = null;
+const USUARIO_KEY = 'usuario_perfil';
+
+export interface Usuario {
+  id: string;
+  nombre: string;
+  rol: string;                  // TECNICO | ADMINISTRADOR | ANALISTA | PESCADOR
+  region_id: string | null;
+  tecnico_id: string | null;    // → cat_tecnico (prefills faena.tecnico_id)
+  pescador_id: string | null;   // → cat_pescador (Phase 2; prefills faena.capitan_id)
+}
 
 export function initSupabase(url: string, anonKey: string): SupabaseClient {
   _client = createClient(url, anonKey, {
     auth: {
-      storage: SqliteAuthStorage,     // persist the anon session per install
+      storage: SqliteAuthStorage,     // persist the session per install (offline)
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: false,      // no deep-link OAuth in this app
@@ -28,17 +37,40 @@ export function supabase(): SupabaseClient {
   return _client;
 }
 
-// Ensure we hold an authenticated (anonymous) session before any RLS-guarded
-// call. Reuses the persisted session if present; otherwise signs in anonymously
-// (needs network — runs during the online bootstrap). Returns the auth.uid().
-export async function ensureAnonAuth(): Promise<string> {
+// uid of the persisted session (works offline), or null if not signed in.
+export async function getSessionUserId(): Promise<string | null> {
   const { data: { session } } = await supabase().auth.getSession();
-  if (session?.user) return session.user.id;
+  return session?.user?.id ?? null;
+}
 
-  const { data, error } = await supabase().auth.signInAnonymously();
-  if (error) throw new Error('auth anónima: ' + error.message);
-  if (!data.user) throw new Error('auth anónima: sin usuario en la respuesta');
-  return data.user.id;
+export async function signInEmail(email: string, password: string): Promise<void> {
+  const { error } = await supabase().auth.signInWithPassword({ email, password });
+  if (error) throw new Error(error.message);
+}
+
+export async function signOut(): Promise<void> {
+  await SqliteAuthStorage.removeItem(USUARIO_KEY);
+  await supabase().auth.signOut();
+}
+
+// Load the signed-in user's profile (rol, tecnico_id, region…). Online: fetch +
+// cache; offline: fall back to the cached copy so prefill still works.
+export async function loadUsuario(): Promise<Usuario | null> {
+  try {
+    const uid = await getSessionUserId();
+    if (!uid) return null;
+    const { data, error } = await supabase()
+      .from('usuario')
+      .select('id, nombre, rol, region_id, tecnico_id, pescador_id')
+      .eq('id', uid)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (data) await SqliteAuthStorage.setItem(USUARIO_KEY, JSON.stringify(data));
+    return (data as Usuario) ?? null;
+  } catch {
+    const cached = await SqliteAuthStorage.getItem(USUARIO_KEY);
+    return cached ? (JSON.parse(cached) as Usuario) : null;
+  }
 }
 
 // The single sync call: hand the built payload to the atomic, idempotent RPC.
