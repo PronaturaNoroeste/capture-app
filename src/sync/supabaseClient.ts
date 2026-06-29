@@ -37,10 +37,13 @@ export function supabase(): SupabaseClient {
   return _client;
 }
 
-// uid of the persisted session (works offline), or null if not signed in.
+// uid of the persisted *real* session (works offline), or null. Anonymous sessions
+// (left over from the retired anon-auth flow) don't count — force a real login.
 export async function getSessionUserId(): Promise<string | null> {
   const { data: { session } } = await supabase().auth.getSession();
-  return session?.user?.id ?? null;
+  const user = session?.user;
+  if (!user || user.is_anonymous) return null;
+  return user.id;
 }
 
 export async function signInEmail(email: string, password: string): Promise<void> {
