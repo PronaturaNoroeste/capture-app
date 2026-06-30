@@ -27,6 +27,9 @@ interface Props {
 
 type Inst = Record<string, unknown>;
 
+const instFilled = (inst: Inst) =>
+  Object.values(inst).some((v) => v !== undefined && v !== null && v !== '');
+
 export function FormRenderer(p: Props) {
   // non-repeating sections share one flat scope (faena-level answers, keyed by field.key).
   // Seed it with account-derived prefill (e.g. the técnico's own cat_tecnico id).
@@ -39,6 +42,7 @@ export function FormRenderer(p: Props) {
   });
   const [showErrors, setShowErrors] = useState(false);
   const [submitError, setSubmitError] = useState(false);   // last submit blocked by missing fields
+  const [minErrors, setMinErrors] = useState<Record<string, string>>({});  // repeating-section "min" violations
   const scrollRef = useRef<ScrollView>(null);
   const sectionY = useRef<Record<string, number>>({});     // section key → y offset (for scroll-to-error)
 
@@ -48,14 +52,24 @@ export function FormRenderer(p: Props) {
   // Editing any field clears the "revisa los campos" button state.
   const setField = (k: string, v: unknown) => { setSubmitError(false); setScope((s) => ({ ...s, [k]: v })); };
   const setRepeatField = (sec: string, i: number, k: string, v: unknown) => {
-    setSubmitError(false);
+    setSubmitError(false); setMinErrors({});
     setRepeats((r) => {
       const arr = [...(r[sec] ?? [])]; arr[i] = { ...arr[i], [k]: v }; return { ...r, [sec]: arr };
     });
   };
 
-  const errorsFor = (campos: Campo[], inst: Inst) =>
-    showErrors ? Object.fromEntries(validateAnswer(campos, inst).map((e) => [e.campo, e.mensaje])) : {};
+  // Range/format errors show as soon as a field has a value (e.g. "máximo 250" while
+  // typing); "required-empty" errors appear only after a submit attempt (so the form
+  // isn't all red on load).
+  const errorsFor = (campos: Campo[], inst: Inst) => {
+    const out: Record<string, string> = {};
+    for (const e of validateAnswer(campos, inst)) {
+      const v = inst[e.campo];
+      const empty = v === undefined || v === null || v === '';
+      if (!empty || showErrors) out[e.campo] = e.mensaje;
+    }
+    return out;
+  };
 
   function visibleCampos(campos: Campo[], inst: Inst): Campo[] {
     return campos.filter((c) => !p.hiddenKeys?.includes(c.key) && campoVisible(c, inst));
@@ -72,15 +86,23 @@ export function FormRenderer(p: Props) {
   function submit() {
     // validate every visible field in visible sections; remember the first bad section
     let firstBad: string | null = null;
+    const newMin: Record<string, string> = {};
     for (const s of p.definition.secciones) {
       if (!seccionVisible(s, scope)) continue;
       let secBad = false;
       if (s.repetible) {
-        for (const inst of repeats[s.key] ?? [])
+        const insts = repeats[s.key] ?? [];
+        for (const inst of insts)
           if (validateAnswer(s.campos, inst).length) secBad = true;
+        const min = s.min ?? 0;
+        if (min >= 1 && insts.filter(instFilled).length < min) {
+          newMin[s.key] = `Agrega al menos ${min} registro${min > 1 ? 's' : ''}.`;
+          secBad = true;
+        }
       } else if (validateAnswer(s.campos, scope).length) secBad = true;
       if (secBad && firstBad === null) firstBad = s.key;
     }
+    setMinErrors(newMin);
     if (firstBad !== null) {
       setShowErrors(true);
       setSubmitError(true);
@@ -110,9 +132,10 @@ export function FormRenderer(p: Props) {
             visibleCampos={visibleCampos} errorsFor={errorsFor}
             onFaenaField={setField}
             onRepeatField={(i, k, v) => setRepeatField(sec.key, i, k, v)}
-            onAdd={() => setRepeats((r) => ({ ...r, [sec.key]: [...(r[sec.key] ?? []), {}] }))}
-            onRemove={(i) => setRepeats((r) => ({ ...r, [sec.key]: (r[sec.key] ?? []).filter((_, j) => j !== i) }))}
+            onAdd={() => { setMinErrors({}); setRepeats((r) => ({ ...r, [sec.key]: [...(r[sec.key] ?? []), {}] })); }}
+            onRemove={(i) => { setMinErrors({}); setRepeats((r) => ({ ...r, [sec.key]: (r[sec.key] ?? []).filter((_, j) => j !== i) })); }}
             onLayoutY={(y) => { sectionY.current[sec.key] = y; }}
+            minError={minErrors[sec.key]}
           />
         ) : null,
       )}
@@ -133,8 +156,10 @@ function Section(props: {
   onRepeatField: (i: number, k: string, v: unknown) => void;
   onAdd: () => void; onRemove: (i: number) => void;
   onLayoutY?: (y: number) => void;
+  minError?: string;
 }) {
   const { sec } = props;
+  const canRemove = props.repeats.length > (sec.min ?? 0);   // keep at least `min` instances
   return (
     <View style={st.section} onLayout={(e) => props.onLayoutY?.(e.nativeEvent.layout.y)}>
       <Text style={st.sectionTitle}>{sec.titulo}</Text>
@@ -150,7 +175,9 @@ function Section(props: {
         <View key={i} style={st.instance}>
           <View style={st.instanceHead}>
             <Text style={st.instanceLabel}>{sec.titulo} {i + 1}</Text>
-            <Pressable onPress={() => props.onRemove(i)}><Text style={st.remove}>Quitar</Text></Pressable>
+            {canRemove && (
+              <Pressable onPress={() => props.onRemove(i)}><Text style={st.remove}>Quitar</Text></Pressable>
+            )}
           </View>
           {props.visibleCampos(sec.campos, inst).map((c) => (
             <FieldWithOtro key={c.key} campo={c} inst={inst}
@@ -159,6 +186,8 @@ function Section(props: {
           ))}
         </View>
       ))}
+
+      {sec.repetible && props.minError ? <Text style={st.minErr}>{props.minError}</Text> : null}
 
       {sec.repetible && (
         <Pressable style={st.add} onPress={props.onAdd}>
@@ -182,6 +211,7 @@ const st = StyleSheet.create({
   instance: { borderWidth: 1, borderColor: '#eee', borderRadius: 8, padding: 12, marginBottom: 12 },
   instanceHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   instanceLabel: { fontWeight: '600', color: '#555' }, remove: { color: '#c00' },
+  minErr: { color: '#c00', marginBottom: 8, fontWeight: '600' },
   add: { borderWidth: 1, borderColor: '#1a73e8', borderStyle: 'dashed', borderRadius: 8, padding: 12, alignItems: 'center' },
   addText: { color: '#1a73e8', fontWeight: '600' },
   submit: { backgroundColor: '#1a73e8', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8 },
