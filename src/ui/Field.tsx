@@ -40,8 +40,8 @@ function DateField({ value, onChange }: { value: unknown; onChange: (v: unknown)
 // Numeric input keeps the raw text locally so partial entries like "4." survive
 // (parsing to Number on every keystroke would strip the trailing dot). Emits a
 // number (or undefined) upward; allows one decimal separator.
-function NumericInput({ value, ejemplo, onChange }:
-  { value: unknown; ejemplo?: string; onChange: (v: unknown) => void }) {
+function NumericInput({ value, ejemplo, decimales, onChange }:
+  { value: unknown; ejemplo?: string; decimales?: number; onChange: (v: unknown) => void }) {
   const [text, setText] = useState(value == null ? '' : String(value));
   useEffect(() => { if (value == null) setText(''); }, [value]);   // reset on new faena
   return (
@@ -52,6 +52,8 @@ function NumericInput({ value, ejemplo, onChange }:
         let c = t.replace(',', '.').replace(/[^0-9.]/g, '');       // digits + one dot
         const i = c.indexOf('.');
         if (i >= 0) c = c.slice(0, i + 1) + c.slice(i + 1).replace(/\./g, '');
+        // cap digits after the decimal point (e.g. decimales=1 → 35.5, not 35.55)
+        if (decimales != null && c.includes('.')) c = c.slice(0, c.indexOf('.') + 1 + decimales);
         setText(c);
         if (c === '' || c === '.') { onChange(undefined); return; }
         const n = Number(c);
@@ -85,7 +87,7 @@ function renderInput(campo: Campo, value: unknown, onChange: (v: unknown) => voi
   switch (campo.tipo) {
     case 'entero':
     case 'decimal':
-      return <NumericInput value={value} ejemplo={campo.ejemplo} onChange={onChange} />;
+      return <NumericInput value={value} ejemplo={campo.ejemplo} decimales={campo.decimales} onChange={onChange} />;
     case 'fecha':
       return <DateField value={value} onChange={onChange} />;
     case 'seleccion_unica':

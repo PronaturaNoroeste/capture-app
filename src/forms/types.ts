@@ -51,6 +51,7 @@ export interface Campo {
   unidad_captura?: string;
   almacena?: string;
   factor?: number;
+  decimales?: number;   // max digits after the decimal point (numeric inputs)
 }
 
 export interface Seccion {
