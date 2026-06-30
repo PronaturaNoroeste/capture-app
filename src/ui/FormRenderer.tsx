@@ -27,9 +27,6 @@ interface Props {
 
 type Inst = Record<string, unknown>;
 
-const instFilled = (inst: Inst) =>
-  Object.values(inst).some((v) => v !== undefined && v !== null && v !== '');
-
 export function FormRenderer(p: Props) {
   // non-repeating sections share one flat scope (faena-level answers, keyed by field.key).
   // Seed it with account-derived prefill (e.g. the técnico's own cat_tecnico id).
@@ -95,7 +92,7 @@ export function FormRenderer(p: Props) {
         for (const inst of insts)
           if (validateAnswer(s.campos, inst).length) secBad = true;
         const min = s.min ?? 0;
-        if (min >= 1 && insts.filter(instFilled).length < min) {
+        if (min >= 1 && insts.length < min) {   // backstop; empty-but-present rows are caught by required fields
           newMin[s.key] = `Agrega al menos ${min} registro${min > 1 ? 's' : ''}.`;
           secBad = true;
         }
