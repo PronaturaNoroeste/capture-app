@@ -1,8 +1,8 @@
 // Dynamic form renderer: walks the form-definition, manages answers, applies
 // visible_si / validation via the pure engine, supports repeating groups + the
 // "Otro → free text" sentinel. On submit → buildPayload → onComplete(payload).
-import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ScrollView, View, Text, Pressable, TextInput, StyleSheet, Alert } from 'react-native';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 import type { Answers, Campo, FormDefinition, Seccion } from '../forms/types';
@@ -38,15 +38,21 @@ export function FormRenderer(p: Props) {
     return init;
   });
   const [showErrors, setShowErrors] = useState(false);
+  const [submitError, setSubmitError] = useState(false);   // last submit blocked by missing fields
+  const scrollRef = useRef<ScrollView>(null);
+  const sectionY = useRef<Record<string, number>>({});     // section key → y offset (for scroll-to-error)
 
   // Fresh faena → discard any proposals buffered from a previous capture.
   useEffect(() => { clearProposals(); }, []);
 
-  const setField = (k: string, v: unknown) => setScope((s) => ({ ...s, [k]: v }));
-  const setRepeatField = (sec: string, i: number, k: string, v: unknown) =>
+  // Editing any field clears the "revisa los campos" button state.
+  const setField = (k: string, v: unknown) => { setSubmitError(false); setScope((s) => ({ ...s, [k]: v })); };
+  const setRepeatField = (sec: string, i: number, k: string, v: unknown) => {
+    setSubmitError(false);
     setRepeats((r) => {
       const arr = [...(r[sec] ?? [])]; arr[i] = { ...arr[i], [k]: v }; return { ...r, [sec]: arr };
     });
+  };
 
   const errorsFor = (campos: Campo[], inst: Inst) =>
     showErrors ? Object.fromEntries(validateAnswer(campos, inst).map((e) => [e.campo, e.mensaje])) : {};
@@ -64,16 +70,26 @@ export function FormRenderer(p: Props) {
   }, [scope, repeats, p.definition]);
 
   function submit() {
-    // validate every visible field in visible sections
-    let bad = false;
+    // validate every visible field in visible sections; remember the first bad section
+    let firstBad: string | null = null;
     for (const s of p.definition.secciones) {
       if (!seccionVisible(s, scope)) continue;
+      let secBad = false;
       if (s.repetible) {
         for (const inst of repeats[s.key] ?? [])
-          if (validateAnswer(s.campos, inst).length) bad = true;
-      } else if (validateAnswer(s.campos, scope).length) bad = true;
+          if (validateAnswer(s.campos, inst).length) secBad = true;
+      } else if (validateAnswer(s.campos, scope).length) secBad = true;
+      if (secBad && firstBad === null) firstBad = s.key;
     }
-    if (bad) { setShowErrors(true); return; }
+    if (firstBad !== null) {
+      setShowErrors(true);
+      setSubmitError(true);
+      const y = sectionY.current[firstBad];
+      if (y != null) scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
+      Alert.alert('Faltan campos obligatorios', 'Completa los campos marcados en rojo antes de guardar.');
+      return;
+    }
+    setSubmitError(false);
 
     const faenaId = uuidv4();
     const payload = buildPayload({
@@ -86,7 +102,7 @@ export function FormRenderer(p: Props) {
   }
 
   return (
-    <ScrollView style={st.screen} contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
+    <ScrollView ref={scrollRef} style={st.screen} contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
       {p.definition.secciones.map((sec) =>
         seccionVisible(sec, scope) ? (
           <Section key={sec.key} sec={sec}
@@ -96,11 +112,14 @@ export function FormRenderer(p: Props) {
             onRepeatField={(i, k, v) => setRepeatField(sec.key, i, k, v)}
             onAdd={() => setRepeats((r) => ({ ...r, [sec.key]: [...(r[sec.key] ?? []), {}] }))}
             onRemove={(i) => setRepeats((r) => ({ ...r, [sec.key]: (r[sec.key] ?? []).filter((_, j) => j !== i) }))}
+            onLayoutY={(y) => { sectionY.current[sec.key] = y; }}
           />
         ) : null,
       )}
-      <Pressable style={st.submit} onPress={submit}>
-        <Text style={st.submitText}>Guardar faena</Text>
+      <Pressable
+        style={({ pressed }) => [st.submit, submitError && st.submitErr, pressed && st.submitPressed]}
+        onPress={submit}>
+        <Text style={st.submitText}>{submitError ? '⚠ Revisa los campos en rojo' : 'Guardar faena'}</Text>
       </Pressable>
     </ScrollView>
   );
@@ -113,10 +132,11 @@ function Section(props: {
   onFaenaField: (k: string, v: unknown) => void;
   onRepeatField: (i: number, k: string, v: unknown) => void;
   onAdd: () => void; onRemove: (i: number) => void;
+  onLayoutY?: (y: number) => void;
 }) {
   const { sec } = props;
   return (
-    <View style={st.section}>
+    <View style={st.section} onLayout={(e) => props.onLayoutY?.(e.nativeEvent.layout.y)}>
       <Text style={st.sectionTitle}>{sec.titulo}</Text>
 
       {!sec.repetible &&
@@ -165,5 +185,7 @@ const st = StyleSheet.create({
   add: { borderWidth: 1, borderColor: '#1a73e8', borderStyle: 'dashed', borderRadius: 8, padding: 12, alignItems: 'center' },
   addText: { color: '#1a73e8', fontWeight: '600' },
   submit: { backgroundColor: '#1a73e8', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8 },
+  submitErr: { backgroundColor: '#c62828' },     // blocked by missing fields
+  submitPressed: { opacity: 0.75 },              // tap feedback
   submitText: { color: '#fff', fontWeight: '700', fontSize: 16 },
 });
