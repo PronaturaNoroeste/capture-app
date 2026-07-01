@@ -3,6 +3,9 @@
 // prefilled (and that field hidden). On save → enqueue to the SQLite outbox.
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, StatusBar, Platform, StyleSheet } from 'react-native';
+import { useFonts, DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
+import { Fraunces_400Regular, Fraunces_600SemiBold } from '@expo-google-fonts/fraunces';
+import { color, font, radius, space, type } from './src/ui/theme';
 import {
   initSupabase, supabase, syncFaena, getSessionUserId, loadUsuario, signOut, type Usuario,
 } from './src/sync/supabaseClient';
@@ -23,6 +26,9 @@ export default function App() {
   const [form, setForm] = useState<CachedForm | null>(null);
   const [pendientes, setPendientes] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [fontsLoaded] = useFonts({
+    DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, Fraunces_400Regular, Fraunces_600SemiBold,
+  });
 
   async function refreshPend() { setPendientes((await outbox.pendientes()).length); }
 
@@ -106,14 +112,14 @@ export default function App() {
     setAuthState('out');
   }
 
-  if (authState === 'checking') {
-    return <View style={[s.flex, s.center]}><ActivityIndicator size="large" /><Text style={s.status}>Iniciando…</Text></View>;
+  if (!fontsLoaded || authState === 'checking') {
+    return <View style={[s.flex, s.center]}><ActivityIndicator size="large" color={color.tide} /><Text style={s.status}>Iniciando…</Text></View>;
   }
   if (authState === 'out') {
     return <Login onSignedIn={() => setAuthState('in')} />;
   }
   if (!form) {
-    return <View style={[s.flex, s.center]}><ActivityIndicator size="large" /><Text style={s.status}>{status}</Text></View>;
+    return <View style={[s.flex, s.center]}><ActivityIndicator size="large" color={color.tide} /><Text style={s.status}>{status}</Text></View>;
   }
 
   return (
@@ -163,17 +169,17 @@ export default function App() {
 const TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 44;
 
 const s = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#f6f7f9', paddingTop: TOP },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  status: { color: '#666', marginTop: 12, textAlign: 'center' },
-  bar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, backgroundColor: '#0b5cad' },
+  flex: { flex: 1, backgroundColor: color.shell, paddingTop: TOP },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xl },
+  status: { color: color.stone, marginTop: space.md, textAlign: 'center', fontFamily: font.regular },
+  bar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: space.lg, paddingVertical: space.md, backgroundColor: color.tide },
   barInfo: { flexShrink: 1 },
-  barTitle: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  barUser: { color: '#cfe0f3', fontSize: 12, marginTop: 2 },
-  barBtns: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' },
-  syncBtn: { backgroundColor: '#ffffff22', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
-  syncText: { color: '#fff', fontWeight: '600' },
-  saved: { fontSize: 18, fontWeight: '700', color: '#137333' },
-  again: { marginTop: 24, backgroundColor: '#1a73e8', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 14 },
-  againText: { color: '#fff', fontWeight: '700' },
+  barTitle: { color: color.white, fontFamily: font.display, fontSize: type.sectionTitle },
+  barUser: { color: '#cfe4e2', fontSize: type.caption, marginTop: 2, fontFamily: font.regular },
+  barBtns: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap', justifyContent: 'flex-end' },
+  syncBtn: { backgroundColor: '#ffffff22', borderRadius: radius.button, paddingHorizontal: space.md, paddingVertical: space.sm },
+  syncText: { color: color.white, fontFamily: font.semibold, fontSize: type.body },
+  saved: { fontSize: 18, fontFamily: font.display, color: color.success },
+  again: { marginTop: space.xl, backgroundColor: color.tide, borderRadius: radius.button, paddingHorizontal: space.xl, paddingVertical: space.lg },
+  againText: { color: color.white, fontFamily: font.semibold, fontSize: type.body },
 });

@@ -11,6 +11,7 @@ import { campoVisible, seccionVisible, validateAnswer } from '../forms/engine';
 import { buildPayload } from '../forms/buildPayload';
 import { clearProposals, takeProposals } from '../forms/proposals';
 import { Field } from './Field';
+import { color, font, radius, space, type } from './theme';
 
 interface Props {
   definition: FormDefinition;
@@ -202,17 +203,18 @@ function FieldWithOtro(props: { campo: Campo; inst: Inst; error?: string; onChan
 }
 
 const st = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f6f7f9' },
-  section: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
-  instance: { borderWidth: 1, borderColor: '#eee', borderRadius: 8, padding: 12, marginBottom: 12 },
-  instanceHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  instanceLabel: { fontWeight: '600', color: '#555' }, remove: { color: '#c00' },
-  minErr: { color: '#c00', marginBottom: 8, fontWeight: '600' },
-  add: { borderWidth: 1, borderColor: '#1a73e8', borderStyle: 'dashed', borderRadius: 8, padding: 12, alignItems: 'center' },
-  addText: { color: '#1a73e8', fontWeight: '600' },
-  submit: { backgroundColor: '#1a73e8', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8 },
-  submitErr: { backgroundColor: '#c62828' },     // blocked by missing fields
-  submitPressed: { opacity: 0.75 },              // tap feedback
-  submitText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  screen: { flex: 1, backgroundColor: color.shell },
+  section: { backgroundColor: color.canvas, borderRadius: radius.card, padding: space.lg, marginBottom: space.lg, borderWidth: 1, borderColor: color.fog },
+  sectionTitle: { fontSize: 18, fontFamily: font.semibold, color: color.ink, marginBottom: space.md },
+  instance: { borderWidth: 1, borderColor: color.fog, borderRadius: radius.input, padding: space.md, marginBottom: space.md, backgroundColor: color.shell },
+  instanceHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: space.sm },
+  instanceLabel: { fontFamily: font.semibold, color: color.stone },
+  remove: { color: color.danger, fontFamily: font.medium },
+  minErr: { color: color.danger, marginBottom: space.sm, fontFamily: font.semibold },
+  add: { borderWidth: 1, borderColor: color.tide, borderStyle: 'dashed', borderRadius: radius.button, padding: space.md, alignItems: 'center' },
+  addText: { color: color.tide, fontFamily: font.semibold },
+  submit: { backgroundColor: color.tide, borderRadius: radius.button, padding: space.lg, alignItems: 'center', marginTop: space.sm },
+  submitErr: { backgroundColor: color.danger },     // blocked by missing fields
+  submitPressed: { opacity: 0.85 },                 // tap feedback
+  submitText: { color: color.white, fontFamily: font.semibold, fontSize: type.input },
 });

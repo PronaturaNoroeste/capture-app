@@ -10,6 +10,7 @@ import type { Campo } from '../forms/types';
 import { OTRO } from '../forms/types';
 import { rankCatalog, norm, type CatalogItem } from '../catalog/search';
 import { getCatalogItems, addLocalProposal } from '../db/catalogMirror';
+import { color, font, radius, space, type } from './theme';
 import { recordProposal } from '../forms/proposals';
 
 interface Props {
@@ -62,14 +63,14 @@ export function CatalogPicker({ campo, value, onChange }: Props) {
             <Pressable onPress={() => setOpen(false)}><Text style={s.close}>Cerrar</Text></Pressable>
           </View>
           <TextInput
-            style={s.search} placeholder="Escribe para buscar…" value={q}
-            onChangeText={setQ} autoCorrect={false} autoFocus
+            style={s.search} placeholder="Escribe para buscar…" placeholderTextColor={color.stone}
+            value={q} onChangeText={setQ} autoCorrect={false} autoFocus
           />
           {!q && campo.opciones_prioritarias?.length ? (
             <View style={s.chips}>
               {results.slice(0, 8).map((i) => (
                 <Pressable key={i.id} style={s.chip} onPress={() => pick(i.id)}>
-                  <Text>{i.nombre}</Text>
+                  <Text style={s.chipText}>{i.nombre}</Text>
                 </Pressable>
               ))}
             </View>
@@ -113,21 +114,24 @@ export function CatalogPicker({ campo, value, onChange }: Props) {
 }
 
 const s = StyleSheet.create({
-  field: { borderWidth: 1, borderColor: '#bbb', borderRadius: 8, padding: 12, backgroundColor: '#fff' },
-  value: { color: '#111' }, placeholder: { color: '#999' },
-  modal: { flex: 1, backgroundColor: '#fff', paddingTop: 44 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
-  title: { fontSize: 18, fontWeight: '700' }, close: { color: '#1a73e8', fontSize: 16 },
-  search: { marginHorizontal: 16, padding: 12, borderWidth: 1, borderColor: '#ddd', borderRadius: 8 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', padding: 12, gap: 8 },
-  chip: { backgroundColor: '#e8f0fe', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 8 },
-  list: { flex: 1, marginTop: 8 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderColor: '#f2f2f2' },
-  rowText: { fontSize: 16 },
-  badge: { fontSize: 11, color: '#b8860b', backgroundColor: '#fff7e0', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
-  otro: { backgroundColor: '#fafafa' }, otroText: { color: '#1a73e8', fontSize: 16 },
-  propose: { backgroundColor: '#fff7e0' },
-  proposeText: { color: '#b8860b', fontSize: 16, fontWeight: '600' },
-  proposeHint: { color: '#b8860b', fontSize: 12 },
-  empty: { color: '#888', textAlign: 'center', padding: 24 },
+  field: { borderWidth: 1, borderColor: color.fog, borderRadius: radius.input, padding: space.md, backgroundColor: color.canvas },
+  value: { color: color.ink, fontFamily: font.regular, fontSize: type.input },
+  placeholder: { color: color.stone, fontFamily: font.regular, fontSize: type.input },
+  modal: { flex: 1, backgroundColor: color.canvas, paddingTop: 44 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: space.lg },
+  title: { fontSize: type.sectionTitle, fontFamily: font.semibold, color: color.ink },
+  close: { color: color.tide, fontSize: type.input, fontFamily: font.medium },
+  search: { marginHorizontal: space.lg, padding: space.md, borderWidth: 1, borderColor: color.fog, borderRadius: radius.input, color: color.ink, fontFamily: font.regular, fontSize: type.input },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', padding: space.md, gap: space.sm },
+  chip: { backgroundColor: color.tideSoft, borderRadius: radius.button, paddingHorizontal: space.md, paddingVertical: space.sm },
+  chipText: { color: color.tide, fontFamily: font.medium },
+  list: { flex: 1, marginTop: space.sm },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: space.lg, paddingVertical: space.md, borderBottomWidth: 1, borderColor: color.fog },
+  rowText: { fontSize: type.input, color: color.ink, fontFamily: font.regular },
+  badge: { fontSize: type.badge, color: color.warning, backgroundColor: color.warningSoft, paddingHorizontal: space.sm, paddingVertical: 2, borderRadius: radius.badge, fontFamily: font.semibold },
+  otro: { backgroundColor: color.shell }, otroText: { color: color.tide, fontSize: type.input, fontFamily: font.medium },
+  propose: { backgroundColor: color.warningSoft },
+  proposeText: { color: color.warning, fontSize: type.input, fontFamily: font.semibold },
+  proposeHint: { color: color.warning, fontSize: type.caption, fontFamily: font.regular },
+  empty: { color: color.stone, textAlign: 'center', padding: space.xl, fontFamily: font.regular },
 });

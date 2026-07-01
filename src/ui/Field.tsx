@@ -5,6 +5,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import type { Campo } from '../forms/types';
 import { OTRO, opLabel, opValor } from '../forms/types';
 import { CatalogPicker } from './CatalogPicker';
+import { color, font, radius, space, type } from './theme';
 
 // Date field: tap to open the OS calendar dialog (GMS-free). Stores the value as a
 // local 'YYYY-MM-DD' string — same format the rest of the pipeline already expects.
@@ -18,7 +19,7 @@ function DateField({ value, onChange }: { value: unknown; onChange: (v: unknown)
   return (
     <>
       <Pressable style={s.input} onPress={() => setShow(true)}>
-        <Text style={hasValue ? undefined : s.placeholder}>
+        <Text style={hasValue ? s.dateVal : s.placeholder}>
           {hasValue ? (value as string) : 'Seleccionar fecha…'}
         </Text>
       </Pressable>
@@ -46,7 +47,7 @@ function NumericInput({ value, ejemplo, decimales, onChange }:
   useEffect(() => { if (value == null) setText(''); }, [value]);   // reset on new faena
   return (
     <TextInput
-      style={s.input} keyboardType="decimal-pad" placeholder={ejemplo}
+      style={s.input} keyboardType="decimal-pad" placeholder={ejemplo} placeholderTextColor={color.stone}
       value={text}
       onChangeText={(t) => {
         let c = t.replace(',', '.').replace(/[^0-9.]/g, '');       // digits + one dot
@@ -74,7 +75,7 @@ export function Field({ campo, value, error, onChange }: Props) {
   return (
     <View style={s.wrap}>
       <Text style={s.label}>
-        {campo.label}{campo.requerido ? ' *' : ''}
+        {campo.label}{campo.requerido ? <Text style={s.req}>  *</Text> : null}
       </Text>
       {campo.ayuda ? <Text style={s.help}>{campo.ayuda}</Text> : null}
       {renderInput(campo, value, onChange)}
@@ -98,7 +99,7 @@ function renderInput(campo: Campo, value: unknown, onChange: (v: unknown) => voi
             return (
               <Pressable key={valor} onPress={() => onChange(valor)}
                 style={[s.option, value === valor && s.optionSel]}>
-                <Text style={value === valor ? s.optionSelText : undefined}>{label}</Text>
+                <Text style={value === valor ? s.optionSelText : s.optionText}>{label}</Text>
               </Pressable>
             );
           })}
@@ -107,7 +108,7 @@ function renderInput(campo: Campo, value: unknown, onChange: (v: unknown) => voi
     case 'booleano':
       return (
         <Pressable style={[s.option, value === true && s.optionSel]} onPress={() => onChange(!value)}>
-          <Text>{value ? 'Sí' : 'No'}</Text>
+          <Text style={value ? s.optionSelText : s.optionText}>{value ? 'Sí' : 'No'}</Text>
         </Pressable>
       );
     case 'catalogo':
@@ -120,7 +121,8 @@ function renderInput(campo: Campo, value: unknown, onChange: (v: unknown) => voi
     default:
       return (
         <TextInput style={s.input} value={value == null ? '' : String(value)}
-          placeholder={campo.ejemplo} onChangeText={(t) => onChange(t || undefined)} multiline />
+          placeholder={campo.ejemplo} placeholderTextColor={color.stone}
+          onChangeText={(t) => onChange(t || undefined)} multiline />
       );
   }
 }
@@ -128,15 +130,18 @@ function renderInput(campo: Campo, value: unknown, onChange: (v: unknown) => voi
 export { OTRO };
 
 const s = StyleSheet.create({
-  wrap: { marginBottom: 16 },
-  label: { fontWeight: '600', marginBottom: 4 },
-  help: { color: '#666', fontSize: 13, marginBottom: 6 },
-  input: { borderWidth: 1, borderColor: '#bbb', borderRadius: 8, padding: 12, backgroundColor: '#fff' },
-  placeholder: { color: '#999' },
-  options: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  option: { borderWidth: 1, borderColor: '#bbb', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#fff' },
-  optionSel: { backgroundColor: '#1a73e8', borderColor: '#1a73e8' },
-  optionSelText: { color: '#fff' },
-  error: { color: '#c00', fontSize: 13, marginTop: 4 },
-  todo: { color: '#999', fontStyle: 'italic', padding: 12 },
+  wrap: { marginBottom: space.lg },
+  label: { fontFamily: font.semibold, color: color.ink, marginBottom: space.xs, fontSize: 15 },
+  req: { color: color.danger, fontFamily: font.semibold },
+  help: { color: color.stone, fontSize: type.caption, marginBottom: space.sm, fontFamily: font.regular },
+  input: { borderWidth: 1, borderColor: color.fog, borderRadius: radius.input, padding: space.md, backgroundColor: color.canvas, color: color.ink, fontFamily: font.regular, fontSize: type.input },
+  placeholder: { color: color.stone, fontFamily: font.regular, fontSize: type.input },
+  dateVal: { color: color.ink, fontFamily: font.regular, fontSize: type.input },
+  options: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  option: { borderWidth: 1, borderColor: color.fog, borderRadius: radius.button, paddingHorizontal: space.lg, paddingVertical: space.sm, backgroundColor: color.canvas },
+  optionText: { color: color.ink, fontFamily: font.medium },
+  optionSel: { backgroundColor: color.tide, borderColor: color.tide },
+  optionSelText: { color: color.white, fontFamily: font.medium },
+  error: { color: color.danger, fontSize: type.caption, marginTop: space.xs, fontFamily: font.medium },
+  todo: { color: color.stone, fontStyle: 'italic', padding: space.md, fontFamily: font.regular },
 });

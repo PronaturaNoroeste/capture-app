@@ -27,7 +27,8 @@
       "note": "GMS-free: MapLibre/OSM + OS location; sideload/AppGallery; no FCM. expo-sqlite/expo-location autolink — no config plugin needed for M1."
     },
     "plugins": [
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-font"
     ]
   }
 }

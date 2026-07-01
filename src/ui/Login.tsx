@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { signInEmail } from '../sync/supabaseClient';
+import { color, font, radius, space, type } from './theme';
 
 export function Login({ onSignedIn }: { onSignedIn: () => void }) {
   const [email, setEmail] = useState('');
@@ -29,12 +30,12 @@ export function Login({ onSignedIn }: { onSignedIn: () => void }) {
       <Text style={s.title}>Monitoreo pesquero</Text>
       <Text style={s.sub}>Inicia sesión para capturar</Text>
       <TextInput
-        style={s.input} placeholder="Correo" placeholderTextColor="#999"
+        style={s.input} placeholder="Correo" placeholderTextColor={color.stone}
         autoCapitalize="none" autoCorrect={false} keyboardType="email-address"
         value={email} onChangeText={setEmail}
       />
       <TextInput
-        style={s.input} placeholder="Contraseña" placeholderTextColor="#999"
+        style={s.input} placeholder="Contraseña" placeholderTextColor={color.stone}
         secureTextEntry value={pass} onChangeText={setPass}
       />
       {err ? <Text style={s.err}>{err}</Text> : null}
@@ -46,12 +47,12 @@ export function Login({ onSignedIn }: { onSignedIn: () => void }) {
 }
 
 const s = StyleSheet.create({
-  wrap: { flex: 1, justifyContent: 'center', padding: 28, backgroundColor: '#f6f7f9' },
-  title: { fontSize: 24, fontWeight: '800', color: '#0b5cad', textAlign: 'center' },
-  sub: { color: '#666', textAlign: 'center', marginTop: 4, marginBottom: 28 },
-  input: { borderWidth: 1, borderColor: '#bbb', borderRadius: 10, padding: 14, backgroundColor: '#fff', marginBottom: 12, fontSize: 16 },
-  err: { color: '#c00', marginBottom: 8 },
-  btn: { backgroundColor: '#1a73e8', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8 },
+  wrap: { flex: 1, justifyContent: 'center', padding: space.xxl, backgroundColor: color.shell },
+  title: { fontSize: 28, fontFamily: font.display, color: color.tide, textAlign: 'center' },
+  sub: { color: color.stone, textAlign: 'center', marginTop: space.xs, marginBottom: space.xxl, fontFamily: font.regular, fontSize: type.body },
+  input: { borderWidth: 1, borderColor: color.fog, borderRadius: radius.input, padding: space.md, backgroundColor: color.canvas, marginBottom: space.md, fontSize: type.input, color: color.ink, fontFamily: font.regular },
+  err: { color: color.danger, marginBottom: space.sm, fontFamily: font.regular },
+  btn: { backgroundColor: color.tide, borderRadius: radius.button, padding: space.lg, alignItems: 'center', marginTop: space.sm },
   btnOff: { opacity: 0.5 },
-  btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  btnText: { color: color.white, fontFamily: font.semibold, fontSize: type.input },
 });
