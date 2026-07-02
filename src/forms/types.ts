@@ -41,6 +41,7 @@ export interface Campo {
   visible_si?: Condicion;
   opciones?: Opcion[];
   opciones_prioritarias?: string[];
+  lista?: string;              // curated per-form option list (lista_opcion); strict subset
   autocompletar?: boolean;
   filtrado_por?: { campo: string; modo: 'filtrar' | 'priorizar' };
   permite_otro_texto?: boolean;

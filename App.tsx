@@ -11,7 +11,7 @@ import {
 } from './src/sync/supabaseClient';
 import { Outbox } from './src/sync/outbox';
 import { SqliteOutboxStore } from './src/db/outboxStore';
-import { syncCatalogs, cacheForm, getCachedForm, reconcileProposals, type CachedForm } from './src/db/catalogMirror';
+import { syncCatalogs, cacheForm, getCachedForm, reconcileProposals, syncListas, type CachedForm } from './src/db/catalogMirror';
 import { FormRenderer } from './src/ui/FormRenderer';
 import { Login } from './src/ui/Login';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, FORMATO_PILOTO, CATALOGOS_PILOTO } from './src/config';
@@ -61,7 +61,8 @@ export default function App() {
       const { resueltas } = await reconcileProposals(supabase());
       setStatus('Actualizando formulario…');
       await cacheForm(supabase(), formatoId);
-      console.log(`catalogos sincronizados: ${n} filas · propuestas reconciliadas: ${resueltas}`);
+      const nl = await syncListas(supabase(), formatoId);   // curated per-form option lists
+      console.log(`catalogos: ${n} filas · propuestas reconciliadas: ${resueltas} · listas: ${nl}`);
     } catch (e) {
       console.log('sin conexión, usando caché local:', String(e));
     }

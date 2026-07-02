@@ -36,3 +36,23 @@ test('accent-insensitive + token-prefix match', () => {
 test('no match → empty', () => {
   assert.equal(rankCatalog({ query: 'zzzz', items }).length, 0);
 });
+
+test('empty query → higher importancia first, then alpha', () => {
+  const listed = [
+    { id: 'a', nombre: 'Zorro', importancia: 0 },
+    { id: 'b', nombre: 'Bonito', importancia: 1 },
+    { id: 'c', nombre: 'Abadejo', importancia: 0 },
+    { id: 'd', nombre: 'Atún', importancia: 5 },
+  ];
+  const r = rankCatalog({ query: '', items: listed }).map((i) => i.id);
+  assert.deepEqual(r, ['d', 'b', 'c', 'a']);   // 5, 1, then importancia-0 alpha (Abadejo, Zorro)
+});
+
+test('importancia breaks ties on equal query score', () => {
+  const listed = [
+    { id: 'x', nombre: 'Pargo lunarejo', importancia: 0 },
+    { id: 'y', nombre: 'Pargo amarillo', importancia: 9 },
+  ];
+  // both are token-prefix matches for "pargo"; higher importancia wins the tie
+  assert.equal(rankCatalog({ query: 'pargo', items: listed })[0].id, 'y');
+});

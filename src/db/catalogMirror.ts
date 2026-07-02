@@ -112,6 +112,43 @@ export async function reconcileProposals(sb: SupabaseClient): Promise<{ resuelta
   return { resueltas };
 }
 
+// Pull the curated per-form option lists (lista_opcion) for this formato and mirror
+// them locally (replace-in-transaction so de-listed rows disappear). Offline-tolerant.
+export async function syncListas(sb: SupabaseClient, formatoOrigenId: string): Promise<number> {
+  const db = await getDb();
+  const { data, error } = await sb
+    .from('lista_opcion')
+    .select('lista, tabla, registro_id, importancia')
+    .eq('formato_origen_id', formatoOrigenId);
+  if (error) throw new Error(`lista_opcion: ${error.message}`);
+  const rows = (data ?? []) as any[];
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM lista_opcion');
+    for (const r of rows) {
+      await db.runAsync(
+        'INSERT INTO lista_opcion (lista, tabla, registro_id, importancia) VALUES (?, ?, ?, ?)',
+        [r.lista, r.tabla, r.registro_id, r.importancia ?? 0]);
+    }
+  });
+  return rows.length;
+}
+
+// Items for a curated-list field: the list's catalog rows (name + importancia),
+// UNION this device's own pending proposals for `tabla` (so a just-proposed row
+// stays selectable in the strict list until it's reviewed).
+export async function getListaItems(lista: string, tabla: string): Promise<CatalogItem[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<any>(
+    `SELECT c.id AS id, c.nombre AS nombre, c.estado AS estado, l.importancia AS importancia
+       FROM lista_opcion l JOIN catalogo c ON c.id = l.registro_id
+      WHERE l.lista = ?
+     UNION
+     SELECT id, nombre, estado, 0 AS importancia
+       FROM catalogo WHERE tabla = ? AND estado = 'pendiente'`,
+    [lista, tabla]);
+  return rows.map((r) => ({ id: r.id, nombre: r.nombre, estado: r.estado, importancia: r.importancia ?? 0 }));
+}
+
 // ---- form-definition cache ----
 export async function cacheForm(sb: SupabaseClient, formatoOrigenId: string): Promise<void> {
   const db = await getDb();

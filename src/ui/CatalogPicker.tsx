@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Campo } from '../forms/types';
 import { OTRO } from '../forms/types';
 import { rankCatalog, norm, type CatalogItem } from '../catalog/search';
-import { getCatalogItems, addLocalProposal } from '../db/catalogMirror';
+import { getCatalogItems, getListaItems, addLocalProposal } from '../db/catalogMirror';
 import { color, font, radius, space, type } from './theme';
 import { recordProposal } from '../forms/proposals';
 
@@ -25,7 +25,10 @@ export function CatalogPicker({ campo, value, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const tabla = campo.binding.catalogo!;
 
-  useEffect(() => { getCatalogItems(tabla).then(setItems); }, [tabla]);
+  // curated-list field → strict per-form subset; otherwise the full catalog
+  useEffect(() => {
+    (campo.lista ? getListaItems(campo.lista, tabla) : getCatalogItems(tabla)).then(setItems);
+  }, [tabla, campo.lista]);
 
   const results = useMemo(
     () => rankCatalog({ query: q, items, prioritarias: campo.opciones_prioritarias, limit: 50 }),

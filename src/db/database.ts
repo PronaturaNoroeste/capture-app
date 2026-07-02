@@ -51,6 +51,17 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
       k TEXT PRIMARY KEY,
       v TEXT
     );
+
+    -- curated per-form option lists (mirror of lista_opcion for the cached formato):
+    -- which catalog rows are options for a named list, + their importancia rank.
+    CREATE TABLE IF NOT EXISTS lista_opcion (
+      lista       TEXT NOT NULL,
+      tabla       TEXT NOT NULL,
+      registro_id TEXT NOT NULL,
+      importancia INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (lista, registro_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_lista_opcion_lista ON lista_opcion (lista);
   `);
   return _db;
 }

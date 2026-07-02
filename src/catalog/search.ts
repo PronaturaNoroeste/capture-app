@@ -5,6 +5,7 @@ export interface CatalogItem {
   id: string;
   nombre: string;
   estado?: string;        // 'aprobado' | 'pendiente' | … (pendientes get a badge)
+  importancia?: number;   // curated-list rank; higher = higher (0 when not listed)
 }
 
 // Normalize for accent/case-insensitive matching (Spanish catalogs).
@@ -23,15 +24,18 @@ export interface RankOpts {
 // short alphabetical head. Non-empty → prefix matches before substring matches.
 export function rankCatalog({ query, items, prioritarias = [], limit = 30 }: RankOpts): CatalogItem[] {
   const q = norm(query);
+  // legacy prioritarias order (curated lists pass importancia instead and no prioritarias)
+  const prioRank = (i: CatalogItem) => {
+    const idx = prioritarias.indexOf(i.id);
+    return idx < 0 ? Number.POSITIVE_INFINITY : idx;
+  };
   if (!q) {
-    const prio = prioritarias
-      .map((id) => items.find((i) => i.id === id))
-      .filter((x): x is CatalogItem => !!x);
-    const prioIds = new Set(prio.map((i) => i.id));
-    const rest = items
-      .filter((i) => !prioIds.has(i.id))
-      .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
-    return [...prio, ...rest].slice(0, limit);
+    return [...items]
+      .sort((a, b) =>
+        prioRank(a) - prioRank(b)                              // explicit prioritarias first
+        || (b.importancia ?? 0) - (a.importancia ?? 0)         // then curated importancia (desc)
+        || a.nombre.localeCompare(b.nombre, 'es'))
+      .slice(0, limit);
   }
   const scored = items
     .map((i) => {
@@ -48,7 +52,10 @@ export function rankCatalog({ query, items, prioritarias = [], limit = 30 }: Ran
       return { i, score };
     })
     .filter((x) => x.score >= 0)
-    .sort((a, b) => a.score - b.score || a.i.nombre.localeCompare(b.i.nombre, 'es'))
+    .sort((a, b) =>
+      a.score - b.score
+      || (b.i.importancia ?? 0) - (a.i.importancia ?? 0)       // importancia tie-break
+      || a.i.nombre.localeCompare(b.i.nombre, 'es'))
     .map((x) => x.i);
   return scored.slice(0, limit);
 }
