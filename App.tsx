@@ -131,7 +131,9 @@ export default function App() {
           {usuario && <Text style={s.barUser}>{usuario.nombre} · {usuario.rol.toLowerCase()}</Text>}
         </View>
         <View style={s.barBtns}>
-          {pendientes > 0 && (
+          {/* Dev-only: discards errored outbox items. Hidden in production builds so a
+              técnico can't silently drop captured data. Absent when __DEV__ is false. */}
+          {__DEV__ && pendientes > 0 && (
             <Pressable style={s.syncBtn}
               onPress={async () => { const n = await outbox.descartarErrores(); await refreshPend(); setStatus(`Descartados: ${n}`); }}>
               <Text style={s.syncText}>Descartar</Text>
