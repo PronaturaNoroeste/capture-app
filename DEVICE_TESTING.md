@@ -94,3 +94,23 @@ I'll fix issues as they come and re-verify the DB side.
 | "No hay formulario publicado" | The seeded form isn't on the project `.env` points to — confirm it's the DEV project |
 | Sync says "fail" | Offline still, or anon key wrong; check the error text |
 | `npm install` peer errors | `npx expo install --fix` |
+
+## Prod testing & cleaning up test data
+
+Prod holds real historical data, so keep test captures separable and purge them afterwards.
+
+**Rule:** for any test against the **prod** APK, log in as a test account — **`Test`** or
+**`Test_07072026`**. Both are linked to a dedicated `cat_tecnico` **"PRUEBAS — no usar en campo"**
+(`95ab1dd0-0661-4961-b7bc-ff0a1b640875`), so every faena they capture is tagged with that técnico and
+never mixes with real field data. Do **not** test under a real técnico account.
+
+**Clean up** (from `Planning/supabase`, prod DSN in `.env` as `PROD_DATABASE_URL`):
+```bash
+# preview (read-only) — lists the faenas + child rows that would be deleted
+python scripts/purge_test_faenas.py --tecnico-id 95ab1dd0-0661-4961-b7bc-ff0a1b640875
+# delete them (cascades captura/medicion/faena_arte/…)
+python scripts/purge_test_faenas.py --tecnico-id 95ab1dd0-0661-4961-b7bc-ff0a1b640875 --apply
+```
+Single stray faena: `--faena-id <uuid>` (repeatable). The script previews by default, never prints
+the DSN, and refuses to delete more than 50 faenas without `--force` — so a wrong id can't wipe
+real history.
