@@ -7,7 +7,7 @@ import { useFonts, DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold } fro
 import { Fraunces_400Regular, Fraunces_600SemiBold } from '@expo-google-fonts/fraunces';
 import { color, font, radius, space, type } from './src/ui/theme';
 import {
-  initSupabase, supabase, syncFaena, getSessionUserId, loadUsuario, signOut, type Usuario,
+  initSupabase, supabase, syncFaena, hasLocalAuth, loadUsuario, signOut, type Usuario,
 } from './src/sync/supabaseClient';
 import { Outbox } from './src/sync/outbox';
 import { SqliteOutboxStore } from './src/db/outboxStore';
@@ -36,8 +36,8 @@ export default function App() {
   // Init the client and check for a persisted session (works offline).
   useEffect(() => {
     initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
-    getSessionUserId()
-      .then((uid) => setAuthState(uid ? 'in' : 'out'))
+    hasLocalAuth()
+      .then((ok) => setAuthState(ok ? 'in' : 'out'))
       .catch(() => setAuthState('out'));
   }, []);
 

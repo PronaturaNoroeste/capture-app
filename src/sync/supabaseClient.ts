@@ -47,6 +47,20 @@ export async function getSessionUserId(): Promise<string | null> {
   return user.id;
 }
 
+async function cachedUsuario(): Promise<Usuario | null> {
+  const cached = await SqliteAuthStorage.getItem(USUARIO_KEY);
+  return cached ? (JSON.parse(cached) as Usuario) : null;
+}
+
+// Offline-safe "is this device logged in?". A cached profile means the user has an
+// established session here — we trust it so the app stays logged in offline, even
+// when getSession() can't validate/refresh an expired access token without network.
+// No network, no token refresh. autoRefreshToken revalidates the session when back online.
+export async function hasLocalAuth(): Promise<boolean> {
+  if (await cachedUsuario()) return true;
+  try { return !!(await getSessionUserId()); } catch { return false; }
+}
+
 export async function signInEmail(email: string, password: string): Promise<void> {
   const { error } = await supabase().auth.signInWithPassword({ email, password });
   if (error) throw new Error(error.message);
@@ -62,7 +76,7 @@ export async function signOut(): Promise<void> {
 export async function loadUsuario(): Promise<Usuario | null> {
   try {
     const uid = await getSessionUserId();
-    if (!uid) return null;
+    if (!uid) return await cachedUsuario();   // offline / unrefreshable token → cached profile
     const { data, error } = await supabase()
       .from('usuario')
       .select('id, nombre, rol, region_id, tecnico_id, pescador_id, formato_origen_id')
@@ -70,10 +84,9 @@ export async function loadUsuario(): Promise<Usuario | null> {
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (data) await SqliteAuthStorage.setItem(USUARIO_KEY, JSON.stringify(data));
-    return (data as Usuario) ?? null;
+    return (data as Usuario) ?? await cachedUsuario();
   } catch {
-    const cached = await SqliteAuthStorage.getItem(USUARIO_KEY);
-    return cached ? (JSON.parse(cached) as Usuario) : null;
+    return await cachedUsuario();
   }
 }
 
