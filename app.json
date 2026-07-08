@@ -3,11 +3,14 @@
     "name": "Monitoreo Pesquero",
     "slug": "capture-app",
     "version": "1.0.0",
+    "icon": "./assets/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "backgroundColor": "#0b5cad"
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -19,17 +22,25 @@
     "android": {
       "package": "org.pronatura.captura",
       "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ]
     },
     "extra": {
-      "note": "GMS-free: MapLibre/OSM + OS location; sideload/AppGallery; no FCM. expo-sqlite/expo-location autolink — no config plugin needed for M1."
+      "note": "GMS-free: MapLibre/OSM + OS location; sideload/AppGallery; no FCM. expo-sqlite/expo-location autolink — no config plugin needed for M1.",
+      "eas": {
+        "projectId": "babdd633-f686-4757-9a9f-5155a569711b"
+      }
     },
     "plugins": [
       "@react-native-community/datetimepicker",
       "expo-font"
-    ]
+    ],
+    "owner": "pronatura050927"
   }
 }
