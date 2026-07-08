@@ -14,7 +14,7 @@ import { SqliteOutboxStore } from './src/db/outboxStore';
 import { syncCatalogs, cacheForm, getCachedForm, reconcileProposals, syncListas, type CachedForm } from './src/db/catalogMirror';
 import { FormRenderer } from './src/ui/FormRenderer';
 import { Login } from './src/ui/Login';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, FORMATO_PILOTO, CATALOGOS_PILOTO } from './src/config';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, CATALOGOS_PILOTO } from './src/config';
 
 const outbox = new Outbox(new SqliteOutboxStore());
 const DEVICE_ID = 'huawei-pilot-01';   // TODO: stable per-device id
@@ -23,6 +23,7 @@ export default function App() {
   const [authState, setAuthState] = useState<'checking' | 'out' | 'in'>('checking');
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [status, setStatus] = useState('Iniciando…');
+  const [blocked, setBlocked] = useState<string | null>(null);
   const [form, setForm] = useState<CachedForm | null>(null);
   const [pendientes, setPendientes] = useState(0);
   const [saved, setSaved] = useState(false);
@@ -46,13 +47,20 @@ export default function App() {
   }, [authState]);
 
   async function bootstrap() {
+    setBlocked(null);
     setStatus('Cargando perfil…');
-    setUsuario(await loadUsuario());
+    const u = await loadUsuario();
+    setUsuario(u);
 
-    const { data: fmt, error } = await supabase()
-      .from('cat_formato_origen').select('id').eq('codigo', FORMATO_PILOTO).single();
-    if (error) throw new Error('formato: ' + error.message);
-    const formatoId = fmt.id as string;
+    const formatoId = u?.formato_origen_id ?? null;
+    if (u && !formatoId) {
+      setBlocked('No tienes un formulario asignado. Pide a un administrador que te asigne uno.');
+      return;
+    }
+    if (!formatoId) {
+      setBlocked('No se pudo cargar tu perfil. Conéctate a internet e inténtalo de nuevo.');
+      return;
+    }
 
     // Refresh from the server when reachable; fall back to the local cache offline.
     try {
@@ -110,6 +118,7 @@ export default function App() {
     setForm(null);
     setUsuario(null);
     setSaved(false);
+    setBlocked(null);
     setAuthState('out');
   }
 
@@ -118,6 +127,16 @@ export default function App() {
   }
   if (authState === 'out') {
     return <Login onSignedIn={() => setAuthState('in')} />;
+  }
+  if (blocked) {
+    return (
+      <View style={[s.flex, s.center]}>
+        <Text style={[s.status, { paddingHorizontal: space.lg, textAlign: 'center' }]}>{blocked}</Text>
+        <Pressable style={[s.syncBtn, { marginTop: space.lg, backgroundColor: color.tide }]} onPress={logout}>
+          <Text style={s.syncText}>Salir</Text>
+        </Pressable>
+      </View>
+    );
   }
   if (!form) {
     return <View style={[s.flex, s.center]}><ActivityIndicator size="large" color={color.tide} /><Text style={s.status}>{status}</Text></View>;

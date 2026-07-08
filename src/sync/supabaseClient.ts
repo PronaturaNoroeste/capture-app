@@ -18,6 +18,7 @@ export interface Usuario {
   region_id: string | null;
   tecnico_id: string | null;    // → cat_tecnico (prefills faena.tecnico_id)
   pescador_id: string | null;   // → cat_pescador (Phase 2; prefills faena.capitan_id)
+  formato_origen_id: string | null;   // → cat_formato_origen (R4: which form loads on the tablet)
 }
 
 export function initSupabase(url: string, anonKey: string): SupabaseClient {
@@ -64,7 +65,7 @@ export async function loadUsuario(): Promise<Usuario | null> {
     if (!uid) return null;
     const { data, error } = await supabase()
       .from('usuario')
-      .select('id, nombre, rol, region_id, tecnico_id, pescador_id')
+      .select('id, nombre, rol, region_id, tecnico_id, pescador_id, formato_origen_id')
       .eq('id', uid)
       .maybeSingle();
     if (error) throw new Error(error.message);
