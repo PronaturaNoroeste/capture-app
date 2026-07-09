@@ -66,6 +66,22 @@ export async function signInEmail(email: string, password: string): Promise<void
   if (error) throw new Error(error.message);
 }
 
+// Password recovery via emailed OTP code (needs the "Reset Password" email template
+// to include the {{ .Token }} code). Step 1: email a code.
+export async function sendRecoveryCode(email: string): Promise<void> {
+  const { error } = await supabase().auth.resetPasswordForEmail(email);
+  if (error) throw new Error(error.message);
+}
+
+// Step 2: verify the code and set the new password.
+export async function resetPasswordWithCode(email: string, token: string,
+                                            newPassword: string): Promise<void> {
+  const { error } = await supabase().auth.verifyOtp({ email, token, type: 'recovery' });
+  if (error) throw new Error(error.message);
+  const { error: e2 } = await supabase().auth.updateUser({ password: newPassword });
+  if (e2) throw new Error(e2.message);
+}
+
 export async function signOut(): Promise<void> {
   await SqliteAuthStorage.removeItem(USUARIO_KEY);
   await supabase().auth.signOut();
