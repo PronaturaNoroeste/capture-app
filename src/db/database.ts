@@ -40,7 +40,7 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
     CREATE TABLE IF NOT EXISTS formulario_cache (
       formato_origen_id TEXT PRIMARY KEY,
       formulario_id     TEXT NOT NULL,
-      version           INTEGER NOT NULL,
+      version           REAL NOT NULL,     -- decimal form version (R-F: 0.8, 0.9…)
       definicion        TEXT NOT NULL,
       constantes        TEXT
     );
