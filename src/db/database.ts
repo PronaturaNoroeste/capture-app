@@ -3,12 +3,20 @@
 // (approved catalog rows + this device's own pending proposals, for offline autocomplete).
 import * as SQLite from 'expo-sqlite';
 
-let _db: SQLite.SQLiteDatabase | null = null;
+// Memoize the *promise*, not the instance: at boot the Supabase auth storage and
+// hasLocalAuth() call getDb() concurrently, and a second openDatabaseAsync on the
+// same file races the DDL below — on Android expo-sqlite dies with
+// "NativeDatabase.prepareAsync has been rejected → java.lang.NullPointerException".
+let _db: Promise<SQLite.SQLiteDatabase> | null = null;
 
-export async function getDb(): Promise<SQLite.SQLiteDatabase> {
-  if (_db) return _db;
-  _db = await SQLite.openDatabaseAsync('capture.db');
-  await _db.execAsync(`
+export function getDb(): Promise<SQLite.SQLiteDatabase> {
+  if (!_db) _db = openDb();
+  return _db;
+}
+
+async function openDb(): Promise<SQLite.SQLiteDatabase> {
+  const db = await SQLite.openDatabaseAsync('capture.db');
+  await db.execAsync(`
     PRAGMA journal_mode = WAL;
 
     CREATE TABLE IF NOT EXISTS outbox (
@@ -63,5 +71,5 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
     );
     CREATE INDEX IF NOT EXISTS idx_lista_opcion_lista ON lista_opcion (lista);
   `);
-  return _db;
+  return db;
 }
