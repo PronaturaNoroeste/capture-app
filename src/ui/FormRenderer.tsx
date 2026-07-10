@@ -9,7 +9,7 @@ import type { Answers, Campo, FormDefinition, Seccion } from '../forms/types';
 import { OTRO } from '../forms/types';
 import { campoVisible, seccionVisible, validateAnswer } from '../forms/engine';
 import { buildPayload } from '../forms/buildPayload';
-import { clearProposals, takeProposals } from '../forms/proposals';
+import { clearProposals, takeProposals, type Proposal } from '../forms/proposals';
 import { Field } from './Field';
 import { color, font, radius, space, type } from './theme';
 
@@ -23,6 +23,11 @@ interface Props {
   createdBy: string;
   prefill?: Record<string, unknown>;   // field key → value (e.g. tecnico_id from the logged-in user)
   hiddenKeys?: string[];               // field keys to not render (prefilled from the account)
+  // edit mode: re-open a pending faena. faenaId reuses the outbox row; initialAnswers
+  // re-seeds the form; initialPropuestas keeps proposals made in the original capture.
+  faenaId?: string;
+  initialAnswers?: Answers;
+  initialPropuestas?: Proposal[];
   onComplete: (faenaId: string, payload: Record<string, unknown>) => void;
 }
 
@@ -31,11 +36,22 @@ type Inst = Record<string, unknown>;
 export function FormRenderer(p: Props) {
   // non-repeating sections share one flat scope (faena-level answers, keyed by field.key).
   // Seed it with account-derived prefill (e.g. the técnico's own cat_tecnico id).
-  const [scope, setScope] = useState<Inst>(() => ({ ...(p.prefill ?? {}) }));
+  const [scope, setScope] = useState<Inst>(() => {
+    if (p.initialAnswers) {   // editing: non-repeating sections all shared one flat scope
+      const merged: Inst = {};
+      for (const s of p.definition.secciones)
+        if (!s.repetible) Object.assign(merged, p.initialAnswers![s.key] as Inst);
+      return merged;
+    }
+    return { ...(p.prefill ?? {}) };
+  });
   // repeating sections: key → array of instances
   const [repeats, setRepeats] = useState<Record<string, Inst[]>>(() => {
     const init: Record<string, Inst[]> = {};
-    for (const s of p.definition.secciones) if (s.repetible) init[s.key] = (s.min ?? 0) > 0 ? [{}] : [];
+    for (const s of p.definition.secciones) if (s.repetible)
+      init[s.key] = p.initialAnswers
+        ? ((p.initialAnswers[s.key] as Inst[]) ?? [])
+        : ((s.min ?? 0) > 0 ? [{}] : []);
     return init;
   });
   const [showErrors, setShowErrors] = useState(false);
@@ -111,13 +127,17 @@ export function FormRenderer(p: Props) {
     }
     setSubmitError(false);
 
-    const faenaId = uuidv4();
+    const faenaId = p.faenaId ?? uuidv4();
+    // keep proposals from the original capture (edit) plus any made this session, de-duped
+    const props = new Map<string, Proposal>();
+    for (const pr of [...(p.initialPropuestas ?? []), ...takeProposals()]) props.set(pr.id, pr);
     const payload = buildPayload({
       faenaId, formularioId: p.formularioId, formularioVersion: p.formularioVersion,
       formatoOrigenId: p.formatoOrigenId, definition: p.definition, constantes: p.constantes,
       answers, newId: () => uuidv4(), deviceId: p.deviceId, createdBy: p.createdBy,
-      propuestas: takeProposals(),
+      propuestas: [...props.values()],
     });
+    payload.__answers = answers;   // stashed for re-opening; stripped before the RPC in syncFaena
     p.onComplete(faenaId, payload);
   }
 

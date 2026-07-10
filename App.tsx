@@ -2,14 +2,14 @@
 // and render the form fully offline. The signed-in técnico's tecnico_id is
 // prefilled (and that field hidden). On save → enqueue to the SQLite outbox.
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, StatusBar, Platform, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, StatusBar, Platform, StyleSheet, Alert, ScrollView } from 'react-native';
 import { useFonts, DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
 import { Fraunces_400Regular, Fraunces_600SemiBold } from '@expo-google-fonts/fraunces';
 import { color, font, radius, space, type } from './src/ui/theme';
 import {
   initSupabase, supabase, syncFaena, hasLocalAuth, loadUsuario, signOut, type Usuario,
 } from './src/sync/supabaseClient';
-import { Outbox } from './src/sync/outbox';
+import { Outbox, type OutboxEntry } from './src/sync/outbox';
 import { SqliteOutboxStore } from './src/db/outboxStore';
 import { syncCatalogs, cacheForm, getCachedForm, reconcileProposals, syncListas, type CachedForm } from './src/db/catalogMirror';
 import { FormRenderer } from './src/ui/FormRenderer';
@@ -27,6 +27,9 @@ export default function App() {
   const [form, setForm] = useState<CachedForm | null>(null);
   const [pendientes, setPendientes] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [screen, setScreen] = useState<'form' | 'pendientes' | 'edit'>('form');
+  const [pendList, setPendList] = useState<OutboxEntry[]>([]);
+  const [editEntry, setEditEntry] = useState<OutboxEntry | null>(null);
   const [fontsLoaded] = useFonts({
     DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, Fraunces_400Regular, Fraunces_600SemiBold,
   });
@@ -93,10 +96,30 @@ export default function App() {
   const prefill = (tecnicoField && usuario?.tecnico_id) ? { [tecnicoField]: usuario.tecnico_id } : undefined;
   const hiddenKeys = prefill ? [tecnicoField!] : undefined;
 
+  async function openPendientes() {
+    setPendList(await outbox.pendientes());
+    setScreen('pendientes');
+  }
+
   async function onComplete(faenaId: string, payload: Record<string, unknown>) {
+    const wasEdit = screen === 'edit';
     await outbox.enqueue(faenaId, payload);
     await refreshPend();
-    setSaved(true);
+    if (wasEdit) { setEditEntry(null); await openPendientes(); }   // back to the list
+    else setSaved(true);
+  }
+
+  function startEdit(entry: OutboxEntry) { setEditEntry(entry); setScreen('edit'); }
+
+  function deleteEntry(entry: OutboxEntry) {
+    Alert.alert('Eliminar faena', '¿Borrar esta faena sin sincronizar? No se puede deshacer.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: async () => {
+        await outbox.descartar(entry.faenaId);
+        await refreshPend();
+        setPendList(await outbox.pendientes());
+      } },
+    ]);
   }
 
   async function flush() {
@@ -158,6 +181,9 @@ export default function App() {
               <Text style={s.syncText}>Descartar</Text>
             </Pressable>
           )}
+          <Pressable style={s.syncBtn} onPress={openPendientes}>
+            <Text style={s.syncText}>📋 Pendientes ({pendientes})</Text>
+          </Pressable>
           <Pressable style={s.syncBtn} onPress={flush}>
             <Text style={s.syncText}>Sincronizar ({pendientes})</Text>
           </Pressable>
@@ -166,7 +192,59 @@ export default function App() {
           </Pressable>
         </View>
       </View>
-      {saved ? (
+      {screen === 'pendientes' ? (
+        <ScrollView style={s.flex} contentContainerStyle={{ padding: space.lg }}>
+          <View style={s.pendHead}>
+            <Text style={s.pendTitle}>Pendientes ({pendList.length})</Text>
+            <Pressable style={s.backBtn} onPress={() => setScreen('form')}>
+              <Text style={s.syncText}>← Volver</Text>
+            </Pressable>
+          </View>
+          {pendList.length === 0 && <Text style={s.status}>No hay faenas sin sincronizar.</Text>}
+          {pendList.map((e) => {
+            const f = (e.payload as any).faena ?? {};
+            const nCap = ((e.payload as any).capturas ?? []).length;
+            const nMed = ((e.payload as any).mediciones ?? []).length;
+            return (
+              <View key={e.faenaId} style={s.card}>
+                <Text style={s.cardTitle}>
+                  {e.state === 'error' ? '⚠️' : '⏳'} Faena · {String(f.fecha ?? 'sin fecha')}
+                </Text>
+                <Text style={s.cardSub}>
+                  {nCap} captura(s) · {nMed} medición(es){e.ultimoError ? ` · error: ${e.ultimoError}` : ''}
+                </Text>
+                <View style={s.cardBtns}>
+                  <Pressable style={s.cardBtn} onPress={() => startEdit(e)}>
+                    <Text style={s.cardBtnTxt}>Editar</Text>
+                  </Pressable>
+                  <Pressable style={[s.cardBtn, s.cardDel]} onPress={() => deleteEntry(e)}>
+                    <Text style={s.cardBtnTxt}>🗑️ Borrar</Text>
+                  </Pressable>
+                </View>
+              </View>
+            );
+          })}
+        </ScrollView>
+      ) : screen === 'edit' && editEntry ? (
+        <View style={s.flex}>
+          <Pressable style={[s.backBtn, { margin: space.sm, alignSelf: 'flex-start' }]}
+            onPress={() => { setEditEntry(null); setScreen('pendientes'); }}>
+            <Text style={s.syncText}>← Cancelar edición</Text>
+          </Pressable>
+          <FormRenderer
+            key={editEntry.faenaId}
+            definition={form.definicion} constantes={form.constantes}
+            formularioId={form.formularioId} formularioVersion={form.version}
+            formatoOrigenId={form.formatoOrigenId} deviceId={DEVICE_ID}
+            createdBy={usuario?.id ?? DEVICE_ID}
+            prefill={prefill} hiddenKeys={hiddenKeys}
+            faenaId={editEntry.faenaId}
+            initialAnswers={(editEntry.payload as any).__answers}
+            initialPropuestas={(editEntry.payload as any).propuestas}
+            onComplete={onComplete}
+          />
+        </View>
+      ) : saved ? (
         <View style={s.center}>
           <Text style={s.saved}>✓ Faena guardada en el dispositivo</Text>
           <Text style={s.status}>{pendientes} sin sincronizar · {status}</Text>
@@ -204,4 +282,14 @@ const s = StyleSheet.create({
   saved: { fontSize: 18, fontFamily: font.display, color: color.success },
   again: { marginTop: space.xl, backgroundColor: color.tide, borderRadius: radius.button, paddingHorizontal: space.xl, paddingVertical: space.lg },
   againText: { color: color.white, fontFamily: font.semibold, fontSize: type.body },
+  pendHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.md },
+  pendTitle: { fontSize: type.sectionTitle, fontFamily: font.display, color: color.tide },
+  backBtn: { backgroundColor: color.tide, borderRadius: radius.button, paddingHorizontal: space.md, paddingVertical: space.sm },
+  card: { backgroundColor: color.canvas, borderWidth: 1, borderColor: color.fog, borderRadius: radius.card, padding: space.md, marginBottom: space.md },
+  cardTitle: { fontFamily: font.semibold, fontSize: type.body, color: color.ink },
+  cardSub: { fontFamily: font.regular, fontSize: type.caption, color: color.stone, marginTop: 2 },
+  cardBtns: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
+  cardBtn: { backgroundColor: color.tide, borderRadius: radius.button, paddingHorizontal: space.md, paddingVertical: space.sm },
+  cardDel: { backgroundColor: color.danger },
+  cardBtnTxt: { color: color.white, fontFamily: font.semibold, fontSize: type.body },
 });

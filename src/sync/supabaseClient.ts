@@ -109,6 +109,8 @@ export async function loadUsuario(): Promise<Usuario | null> {
 // The single sync call: hand the built payload to the atomic, idempotent RPC.
 // Conforms to SyncFn in outbox.ts. Throws on error so the outbox marks it retryable.
 export async function syncFaena(payload: Record<string, unknown>): Promise<void> {
-  const { error } = await supabase().rpc('crear_faena_completa', { payload });
+  // __answers is the raw form state stashed for offline re-editing — never upload it.
+  const { __answers, ...clean } = payload;
+  const { error } = await supabase().rpc('crear_faena_completa', { payload: clean });
   if (error) throw new Error(error.message);
 }

@@ -56,3 +56,23 @@ test('re-enqueue same faena id updates payload, preserves creadoEn', async () =>
   assert.equal(e.creadoEn, created);   // unchanged
   assert.equal(e.actualizadoEn, 2000);
 });
+
+test('descartar removes a single queued faena before sync', async () => {
+  const store = new MemoryOutboxStore();
+  const ob = new Outbox(store);
+  await ob.enqueue('F1', { faena: { id: 'F1' } });
+  await ob.enqueue('F2', { faena: { id: 'F2' } });
+  assert.equal((await ob.pendientes()).length, 2);
+  await ob.descartar('F1');
+  assert.equal(await store.get('F1'), undefined);
+  assert.deepEqual((await ob.pendientes()).map((e) => e.faenaId), ['F2']);
+});
+
+test('enqueue keeps __answers in the stored payload (for offline re-edit)', async () => {
+  const store = new MemoryOutboxStore();
+  const ob = new Outbox(store);
+  await ob.enqueue('F1', { faena: { id: 'F1', fecha: '2026-07-09' },
+                           __answers: { generales: { capitan: 'X' } } });
+  const e = await store.get('F1');
+  assert.deepEqual(e.payload.__answers, { generales: { capitan: 'X' } });
+});

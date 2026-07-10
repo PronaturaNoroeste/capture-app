@@ -55,6 +55,12 @@ export class Outbox {
     return this.store.list(['pendiente', 'error']);
   }
 
+  // Delete one queued faena (pendiente or error) before it syncs — used by the
+  // técnico from the Pendientes list to discard a capture they don't want to send.
+  async descartar(faenaId: string): Promise<void> {
+    await this.store.remove(faenaId);
+  }
+
   // Discard entries stuck in 'error' (e.g. a bad payload during dev). Returns count.
   async descartarErrores(): Promise<number> {
     const errored = await this.store.list(['error']);
