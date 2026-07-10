@@ -28,6 +28,8 @@
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ]
     },
@@ -41,6 +43,12 @@
       "@react-native-community/datetimepicker",
       "expo-font"
     ],
-    "owner": "pronatura050927"
+    "owner": "pronatura050927",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/babdd633-f686-4757-9a9f-5155a569711b"
+    }
   }
 }
