@@ -168,14 +168,23 @@ export default function App() {
   return (
     <View style={s.flex}>
       <View style={s.bar}>
-        <View style={s.barInfo}>
+        {/* The lines are cut to keep the header one row high; tapping shows them in full. */}
+        <Pressable
+          style={s.barInfo}
+          onPress={() => Alert.alert(
+            `Boca del Álamo · v${form.version}`,
+            usuario ? `${usuario.nombre}\n${usuario.rol.toLowerCase()}` : undefined,
+          )}
+          accessibilityRole="button"
+          accessibilityLabel="Ver la información completa del formulario y la cuenta"
+        >
           <Text style={s.barTitle} numberOfLines={1} ellipsizeMode="tail">Boca del Álamo · v{form.version}</Text>
           {usuario && (
             <Text style={s.barUser} numberOfLines={1} ellipsizeMode="tail">
               {usuario.nombre} · {usuario.rol.toLowerCase()}
             </Text>
           )}
-        </View>
+        </Pressable>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
