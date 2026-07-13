@@ -178,7 +178,11 @@ export default function App() {
           accessibilityRole="button"
           accessibilityLabel="Ver la información completa del formulario y la cuenta"
         >
-          <Text style={s.barTitle} numberOfLines={1} ellipsizeMode="tail">Boca del Álamo · v{form.version}</Text>
+          <View style={s.barTitleRow}>
+            <Text style={s.barTitle} numberOfLines={1} ellipsizeMode="tail">Boca del Álamo · v{form.version}</Text>
+            {/* Sits outside the truncating Text so it survives when the title is cut. */}
+            <Text style={s.barInfoGlyph}>ⓘ</Text>
+          </View>
           {usuario && (
             <Text style={s.barUser} numberOfLines={1} ellipsizeMode="tail">
               {usuario.nombre} · {usuario.rol.toLowerCase()}
@@ -293,7 +297,9 @@ const s = StyleSheet.create({
   status: { color: color.stone, marginTop: space.md, textAlign: 'center', fontFamily: font.regular },
   bar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: space.lg, paddingVertical: space.md, backgroundColor: color.tide },
   barInfo: { flexShrink: 1, marginRight: space.md },
-  barTitle: { color: color.white, fontFamily: font.display, fontSize: type.sectionTitle },
+  barTitleRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  barTitle: { color: color.white, fontFamily: font.display, fontSize: type.sectionTitle, flexShrink: 1 },
+  barInfoGlyph: { color: '#cfe4e2', fontSize: type.caption },
   barUser: { color: '#cfe4e2', fontSize: type.caption, marginTop: 2, fontFamily: font.regular },
   // The buttons scroll sideways instead of wrapping: wrapping grew the header on narrow devices.
   barBtnsScroll: { flexGrow: 0, flexShrink: 1 },
