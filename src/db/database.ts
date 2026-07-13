@@ -49,6 +49,7 @@ async function openDb(): Promise<SQLite.SQLiteDatabase> {
       formato_origen_id TEXT PRIMARY KEY,
       formulario_id     TEXT NOT NULL,
       version           REAL NOT NULL,     -- decimal form version (R-F: 0.8, 0.9…)
+      nombre            TEXT,              -- form display name (header title)
       definicion        TEXT NOT NULL,
       constantes        TEXT
     );
@@ -71,5 +72,10 @@ async function openDb(): Promise<SQLite.SQLiteDatabase> {
     );
     CREATE INDEX IF NOT EXISTS idx_lista_opcion_lista ON lista_opcion (lista);
   `);
+  // Installs that created formulario_cache before the nombre column existed:
+  // CREATE TABLE IF NOT EXISTS won't touch them, so patch in place. (No migration
+  // system yet — this try/ignore ALTER is the whole mechanism.)
+  await db.execAsync('ALTER TABLE formulario_cache ADD COLUMN nombre TEXT')
+    .catch(() => { /* duplicate column = already migrated */ });
   return db;
 }

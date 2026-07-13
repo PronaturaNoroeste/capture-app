@@ -2,9 +2,6 @@
 export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
-// M1 pilot: which form to load. The app resolves this codigo → cat_formato_origen.id.
-export const FORMATO_PILOTO = 'BOCA_ALAMO_V2';
-
 // Catalogs the pilot form references (cached for offline autocomplete).
 export const CATALOGOS_PILOTO = [
   'cat_comunidad', 'cat_tecnico', 'cat_cooperativa', 'cat_pescador', 'cat_embarcacion',

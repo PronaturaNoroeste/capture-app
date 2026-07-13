@@ -172,14 +172,14 @@ export default function App() {
         <Pressable
           style={s.barInfo}
           onPress={() => Alert.alert(
-            `Boca del Álamo · v${form.version}`,
+            `${form.nombre ?? 'Formulario'} · v${form.version}`,
             usuario ? `${usuario.nombre}\n${usuario.rol.toLowerCase()}` : undefined,
           )}
           accessibilityRole="button"
           accessibilityLabel="Ver la información completa del formulario y la cuenta"
         >
           <View style={s.barTitleRow}>
-            <Text style={s.barTitle} numberOfLines={1} ellipsizeMode="tail">Boca del Álamo · v{form.version}</Text>
+            <Text style={s.barTitle} numberOfLines={1} ellipsizeMode="tail">{form.nombre ?? 'Formulario'} · v{form.version}</Text>
             {/* Sits outside the truncating Text so it survives when the title is cut. */}
             <Text style={s.barInfoGlyph}>ⓘ</Text>
           </View>

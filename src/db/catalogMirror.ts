@@ -154,7 +154,7 @@ export async function cacheForm(sb: SupabaseClient, formatoOrigenId: string): Pr
   const db = await getDb();
   const { data, error } = await sb
     .from('formulario')
-    .select('id, version, definicion, constantes')
+    .select('id, nombre, version, definicion, constantes')
     .eq('formato_origen_id', formatoOrigenId)
     .eq('estado', 'publicado')
     .order('version', { ascending: false })
@@ -163,12 +163,12 @@ export async function cacheForm(sb: SupabaseClient, formatoOrigenId: string): Pr
   if (error) throw new Error(error.message);
   if (!data) return;
   await db.runAsync(
-    `INSERT INTO formulario_cache (formato_origen_id, formulario_id, version, definicion, constantes)
-     VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO formulario_cache (formato_origen_id, formulario_id, version, nombre, definicion, constantes)
+     VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(formato_origen_id) DO UPDATE SET
        formulario_id=excluded.formulario_id, version=excluded.version,
-       definicion=excluded.definicion, constantes=excluded.constantes`,
-    [formatoOrigenId, data.id, data.version,
+       nombre=excluded.nombre, definicion=excluded.definicion, constantes=excluded.constantes`,
+    [formatoOrigenId, data.id, data.version, data.nombre,
      JSON.stringify(data.definicion), JSON.stringify(data.constantes ?? {})]);
 }
 
@@ -176,6 +176,8 @@ export interface CachedForm {
   formatoOrigenId: string;
   formularioId: string;
   version: number;
+  // null on a cache row written by a pre-nombre app version and never refreshed online
+  nombre: string | null;
   definicion: { secciones: any[] };
   constantes: Record<string, unknown>;
 }
@@ -189,6 +191,7 @@ export async function getCachedForm(formatoOrigenId: string): Promise<CachedForm
     formatoOrigenId: r.formato_origen_id,
     formularioId: r.formulario_id,
     version: r.version,
+    nombre: r.nombre ?? null,
     definicion: JSON.parse(r.definicion),
     constantes: JSON.parse(r.constantes ?? '{}'),
   };
