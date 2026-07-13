@@ -169,10 +169,20 @@ export default function App() {
     <View style={s.flex}>
       <View style={s.bar}>
         <View style={s.barInfo}>
-          <Text style={s.barTitle}>Boca del Álamo · v{form.version}</Text>
-          {usuario && <Text style={s.barUser}>{usuario.nombre} · {usuario.rol.toLowerCase()}</Text>}
+          <Text style={s.barTitle} numberOfLines={1} ellipsizeMode="tail">Boca del Álamo · v{form.version}</Text>
+          {usuario && (
+            <Text style={s.barUser} numberOfLines={1} ellipsizeMode="tail">
+              {usuario.nombre} · {usuario.rol.toLowerCase()}
+            </Text>
+          )}
         </View>
-        <View style={s.barBtns}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          style={s.barBtnsScroll}
+          contentContainerStyle={s.barBtns}
+        >
           {/* Dev-only: discards errored outbox items. Hidden in production builds so a
               técnico can't silently drop captured data. Absent when __DEV__ is false. */}
           {__DEV__ && pendientes > 0 && (
@@ -190,7 +200,7 @@ export default function App() {
           <Pressable style={s.syncBtn} onPress={logout}>
             <Text style={s.syncText}>Salir</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       </View>
       {screen === 'pendientes' ? (
         <ScrollView style={s.flex} contentContainerStyle={{ padding: space.lg }}>
@@ -273,10 +283,12 @@ const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xl },
   status: { color: color.stone, marginTop: space.md, textAlign: 'center', fontFamily: font.regular },
   bar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: space.lg, paddingVertical: space.md, backgroundColor: color.tide },
-  barInfo: { flexShrink: 1 },
+  barInfo: { flexShrink: 1, marginRight: space.md },
   barTitle: { color: color.white, fontFamily: font.display, fontSize: type.sectionTitle },
   barUser: { color: '#cfe4e2', fontSize: type.caption, marginTop: 2, fontFamily: font.regular },
-  barBtns: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap', justifyContent: 'flex-end' },
+  // The buttons scroll sideways instead of wrapping: wrapping grew the header on narrow devices.
+  barBtnsScroll: { flexGrow: 0, flexShrink: 1 },
+  barBtns: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   syncBtn: { backgroundColor: '#ffffff22', borderRadius: radius.button, paddingHorizontal: space.md, paddingVertical: space.sm },
   syncText: { color: color.white, fontFamily: font.semibold, fontSize: type.body },
   saved: { fontSize: 18, fontFamily: font.display, color: color.success },
