@@ -8,7 +8,7 @@ import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 import type { Campo } from '../forms/types';
 import { OTRO } from '../forms/types';
-import { rankCatalog, norm, type CatalogItem } from '../catalog/search';
+import { rankCatalog, norm, catalogOutsiders, type CatalogItem } from '../catalog/search';
 import { getCatalogItems, getListaItems, addLocalProposal } from '../db/catalogMirror';
 import { color, font, radius, space, type } from './theme';
 import { recordProposal } from '../forms/proposals';
@@ -21,6 +21,7 @@ interface Props {
 
 export function CatalogPicker({ campo, value, onChange }: Props) {
   const [items, setItems] = useState<CatalogItem[]>([]);
+  const [catalogo, setCatalogo] = useState<CatalogItem[]>([]);
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const tabla = campo.binding.catalogo!;
@@ -28,6 +29,12 @@ export function CatalogPicker({ campo, value, onChange }: Props) {
   // curated-list field → strict per-form subset; otherwise the full catalog
   useEffect(() => {
     (campo.lista ? getListaItems(campo.lista, tabla) : getCatalogItems(tabla)).then(setItems);
+  }, [tabla, campo.lista]);
+
+  // A curated list is a subset, so a name the técnico types may already exist in the
+  // wider catalog without being listed. Keep the full mirror on hand to spot that.
+  useEffect(() => {
+    if (campo.lista) getCatalogItems(tabla).then(setCatalogo);
   }, [tabla, campo.lista]);
 
   const results = useMemo(
@@ -38,14 +45,29 @@ export function CatalogPicker({ campo, value, onChange }: Props) {
   const selected = value === OTRO ? 'Otro (especificado)' : items.find((i) => i.id === value)?.nombre;
   const pick = (id: string | undefined) => { onChange(id); setOpen(false); setQ(''); };
 
-  // Propose a new catalog entry (offline): add it to the local mirror so it's
-  // reusable immediately, buffer it for the sync payload, and select it.
   const qTrim = q.trim();
-  const exactMatch = results.some((i) => norm(i.nombre) === norm(qTrim));
+
+  // Exists in the catalog but not in this list → offer the real row rather than let
+  // the técnico mint a duplicate of it (see catalogOutsiders).
+  const outsiders = useMemo(
+    () => (campo.lista ? catalogOutsiders({ query: qTrim, listaItems: items, catalogItems: catalogo }) : []),
+    [campo.lista, qTrim, items, catalogo],
+  );
+  // Picking an outsider adds it to this picker's items so it renders as the selection;
+  // it is NOT a proposal — the row already exists and is approved, so nothing is sent.
+  const pickOutsider = (item: CatalogItem) => {
+    setItems((prev) => (prev.some((i) => i.id === item.id) ? prev : [...prev, item]));
+    pick(item.id);
+  };
+
+  // Propose a new catalog entry (offline): add it to the local mirror so it's
+  // reusable immediately, buffer it for the sync payload, and select it. The list it
+  // came from travels with it, so approval in the console can add it back to that list.
+  const exactMatch = results.some((i) => norm(i.nombre) === norm(qTrim)) || outsiders.length > 0;
   const canPropose = !!campo.permite_proponer && qTrim.length >= 2 && !exactMatch;
   const propose = async () => {
     const id = uuidv4();
-    recordProposal({ tabla, id, nombre: qTrim });
+    recordProposal({ tabla, id, nombre: qTrim, lista: campo.lista });
     await addLocalProposal(tabla, id, qTrim);
     setItems((prev) => [...prev, { id, nombre: qTrim, estado: 'pendiente' }]);
     pick(id);
@@ -83,6 +105,12 @@ export function CatalogPicker({ campo, value, onChange }: Props) {
             keyboardShouldPersistTaps="handled"
             ListHeaderComponent={
               <>
+                {outsiders.map((i) => (
+                  <Pressable key={i.id} style={[s.row, s.outsider]} onPress={() => pickOutsider(i)}>
+                    <Text style={s.rowText}>{i.nombre}</Text>
+                    <Text style={s.outsiderHint}>ya existe · fuera de esta lista</Text>
+                  </Pressable>
+                ))}
                 {canPropose ? (
                   <Pressable style={[s.row, s.propose]} onPress={propose}>
                     <Text style={s.proposeText}>+ Proponer «{qTrim}»</Text>
@@ -133,6 +161,8 @@ const s = StyleSheet.create({
   rowText: { fontSize: type.input, color: color.ink, fontFamily: font.regular },
   badge: { fontSize: type.badge, color: color.warning, backgroundColor: color.warningSoft, paddingHorizontal: space.sm, paddingVertical: 2, borderRadius: radius.badge, fontFamily: font.semibold },
   otro: { backgroundColor: color.shell }, otroText: { color: color.tide, fontSize: type.input, fontFamily: font.medium },
+  outsider: { backgroundColor: color.shell },
+  outsiderHint: { color: color.stone, fontSize: type.caption, fontFamily: font.regular },
   propose: { backgroundColor: color.warningSoft },
   proposeText: { color: color.warning, fontSize: type.input, fontFamily: font.semibold },
   proposeHint: { color: color.warning, fontSize: type.caption, fontFamily: font.regular },

@@ -8,6 +8,7 @@ export interface Proposal {
   tabla: string;   // cat_* table (must be permite_propuestas server-side)
   id: string;      // client-generated UUID, also the catalog row id
   nombre: string;
+  lista?: string;  // curated list it was proposed from, so approval can put it back there
 }
 
 const buffer = new Map<string, Proposal>();

@@ -142,6 +142,32 @@ test('propuestas: only proposals referenced by the payload are included', () => 
   assert.deepEqual(p.propuestas[0], { tabla: 'cat_pescador', id: 'PROP-CAP', nombre: 'Nuevo Capitán' });
 });
 
+test('propuestas: the curated list the name was proposed from travels with it', () => {
+  counter = 0;
+  // A proposal made on a curated-list field carries `lista`, so the RPC can record
+  // which list it belongs to and the console can put it back there on approval.
+  const answers = { generales: { capitan: 'PROP-CAP', especie_objetivo: 'E-HUACH' } };
+  const p = buildPayload(base({
+    answers,
+    propuestas: [
+      { tabla: 'cat_pescador', id: 'PROP-CAP', nombre: 'Nuevo Capitán', lista: 'pescadores' },
+    ],
+  }));
+  assert.deepEqual(p.propuestas[0], {
+    tabla: 'cat_pescador', id: 'PROP-CAP', nombre: 'Nuevo Capitán', lista: 'pescadores',
+  });
+});
+
+test('propuestas: a non-curated field proposes without a lista key', () => {
+  counter = 0;
+  const answers = { generales: { capitan: 'PROP-CAP', especie_objetivo: 'E-HUACH' } };
+  const p = buildPayload(base({
+    answers,
+    propuestas: [{ tabla: 'cat_pescador', id: 'PROP-CAP', nombre: 'Nuevo Capitán' }],
+  }));
+  assert.ok(!('lista' in p.propuestas[0]));   // absent, not undefined/null
+});
+
 test('propuestas: absent when none provided', () => {
   counter = 0;
   const p = buildPayload(base({ answers: { generales: { especie_objetivo: 'E-HUACH' } } }));

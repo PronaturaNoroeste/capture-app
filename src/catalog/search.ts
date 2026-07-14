@@ -13,6 +13,26 @@ export function norm(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
 
+export interface OutsiderOpts {
+  query: string;
+  listaItems: CatalogItem[];    // the curated subset shown by the picker
+  catalogItems: CatalogItem[];  // the full mirrored catalog for the same table
+}
+
+// Rows that exist in the wider catalog but not in this curated list, whose name is
+// EXACTLY what the técnico typed. The picker offers these instead of letting them
+// propose a duplicate: a duplicate mints a second row (homonym confusion), and on
+// cat_tipo_arte — UNIQUE (nombre), with no NULL-scoped FK to soften it — the RPC's
+// INSERT raises unique_violation and the whole faena fails to sync.
+// Exact names only: a partial match would leak the full catalog into a picker whose
+// entire purpose is to show a curated subset.
+export function catalogOutsiders({ query, listaItems, catalogItems }: OutsiderOpts): CatalogItem[] {
+  const q = norm(query);
+  if (q.length < 2) return [];
+  const listed = new Set(listaItems.map((i) => i.id));
+  return catalogItems.filter((i) => !listed.has(i.id) && norm(i.nombre) === q);
+}
+
 export interface RankOpts {
   query: string;
   items: CatalogItem[];

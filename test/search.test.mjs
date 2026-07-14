@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rankCatalog, norm } from '../src/catalog/search.ts';
+import { rankCatalog, norm, catalogOutsiders } from '../src/catalog/search.ts';
 
 const items = [
   { id: 'a', nombre: 'Huachinango' },
@@ -55,4 +55,37 @@ test('importancia breaks ties on equal query score', () => {
   ];
   // both are token-prefix matches for "pargo"; higher importancia wins the tie
   assert.equal(rankCatalog({ query: 'pargo', items: listed })[0].id, 'y');
+});
+
+// --- outsiders: rows that exist in the wider catalog but not in this curated list.
+// Proposing one of these would mint a duplicate row (and on cat_tipo_arte, whose
+// nombre is UNIQUE, abort the whole faena sync with a unique_violation).
+test('outsiders: an exact catalog match outside the list is offered', () => {
+  const lista = [{ id: 'l1', nombre: 'Piola' }];
+  const catalogo = [
+    { id: 'l1', nombre: 'Piola' },
+    { id: 'c9', nombre: 'Cimbra' },        // in the catalog, not in this list
+  ];
+  const out = catalogOutsiders({ query: 'cimbra', listaItems: lista, catalogItems: catalogo });
+  assert.deepEqual(out.map((i) => i.id), ['c9']);
+});
+
+test('outsiders: accent/case-insensitive, and ignores rows already in the list', () => {
+  const lista = [{ id: 'l1', nombre: 'Cimbra' }];
+  const catalogo = [{ id: 'l1', nombre: 'Cimbra' }, { id: 'c9', nombre: 'Trasmallo' }];
+  // already listed → not an outsider (the normal ranked results already show it)
+  assert.deepEqual(catalogOutsiders({ query: 'CÍMBRA', listaItems: lista, catalogItems: catalogo }), []);
+});
+
+test('outsiders: only exact names, never partial (curation stays strict)', () => {
+  const catalogo = [{ id: 'c9', nombre: 'Cimbra de fondo' }];
+  // a partial match must NOT leak the whole catalog into a curated picker
+  assert.deepEqual(catalogOutsiders({ query: 'cimbra', listaItems: [], catalogItems: catalogo }), []);
+  assert.equal(
+    catalogOutsiders({ query: 'cimbra de fondo', listaItems: [], catalogItems: catalogo }).length, 1);
+});
+
+test('outsiders: nothing below the 2-char floor', () => {
+  const catalogo = [{ id: 'c9', nombre: 'Pa' }];
+  assert.deepEqual(catalogOutsiders({ query: 'p', listaItems: [], catalogItems: catalogo }), []);
 });

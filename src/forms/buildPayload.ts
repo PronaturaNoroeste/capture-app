@@ -158,7 +158,9 @@ export function buildPayload(input: BuildInput): Record<string, unknown> {
     collectStrings(payload, refs);
     const used = input.propuestas
       .filter((p) => refs.has(p.id))
-      .map((p) => ({ tabla: p.tabla, id: p.id, nombre: p.nombre }));
+      .map((p) => (p.lista
+        ? { tabla: p.tabla, id: p.id, nombre: p.nombre, lista: p.lista }
+        : { tabla: p.tabla, id: p.id, nombre: p.nombre }));
     if (used.length) payload['propuestas'] = used;
   }
   return payload;
